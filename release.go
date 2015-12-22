@@ -15,6 +15,8 @@ import (
 
 	keybase1 "github.com/keybase/client/go/protocol"
 	gh "github.com/keybase/release/github"
+	"github.com/keybase/release/s3"
+	"github.com/keybase/release/version"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -61,7 +63,13 @@ var (
 	updateJSONCmd     = app.Command("update-json", "Generate update.json file for updater.")
 	updateJSONVersion = updateJSONCmd.Flag("version", "Version").Required().String()
 	updateJSONSrc     = updateJSONCmd.Flag("src", "Source file").Required().ExistingFile()
-	updateJSONURI     = updateJSONCmd.Flag("uri", "URI for files").Required().URL()
+	updateJSONURI     = updateJSONCmd.Flag("uri", "URI for location of files").Required().URL()
+
+	indexHTMLCmd        = app.Command("index-html", "Generate index.html for s3 bucket.")
+	indexHTMLBucketName = indexHTMLCmd.Flag("bucket-name", "Bucket name to index").Required().String()
+	indexHTMLPrefix     = indexHTMLCmd.Flag("prefix", "Prefix of files").Required().String()
+	indexHTMLSuffix     = indexHTMLCmd.Flag("suffix", "Suffix of files").String()
+	indexHTMLDest       = indexHTMLCmd.Flag("dest", "Destination file").Required().String()
 
 	parseVersionCmd    = app.Command("version-parse", "Parse a sematic version string.")
 	parseVersionString = parseVersionCmd.Arg("version", "Semantic version to parse").Required().String()
@@ -130,8 +138,13 @@ func main() {
 			log.Fatal(err)
 		}
 		fmt.Fprintf(os.Stdout, "%s\n", out)
+	case indexHTMLCmd.FullCommand():
+		err := s3.WriteHTML(*indexHTMLDest, *indexHTMLBucketName, *indexHTMLPrefix, *indexHTMLSuffix)
+		if err != nil {
+			log.Fatal(err)
+		}
 	case parseVersionCmd.FullCommand():
-		parsed, err := ParseVersion(*parseVersionString)
+		parsed, err := version.ParseVersion(*parseVersionString)
 		if err != nil {
 			log.Fatal(err)
 		}
