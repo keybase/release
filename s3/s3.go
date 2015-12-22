@@ -12,14 +12,17 @@ import (
 	"time"
 
 	"github.com/alecthomas/template"
+	"github.com/blang/semver"
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/s3"
 )
 
-type Link struct {
-	Name         string
-	URL          string
-	LastModified string
+type Release struct {
+	Name    string
+	URL     string
+	Version string
+	Date    string
+	Commit  string
 }
 
 func WriteHTML(path string, bucketName string, prefix string, suffix string) error {
@@ -37,25 +40,56 @@ func WriteHTML(path string, bucketName string, prefix string, suffix string) err
 		return err
 	}
 
-	var links []Link
+	var releases []Release
 	for _, k := range resp.Contents {
 		if strings.HasSuffix(k.Key, suffix) {
 			name := k.Key
-			urlString := fmt.Sprintf("https://s3.amazonaws.com/%s/%s", bucketName, url.QueryEscape(k.Key))
-
-			lastModfified, err := time.Parse(time.RFC3339, k.LastModified)
+			urlString := fmt.Sprintf("https://s3.amazonaws.com/%s/%s", bucketName, url.QueryEscape(name))
+			version, date, commit, err := parseName(name, prefix, suffix)
 			if err != nil {
 				return err
 			}
-
-			links = append(links, Link{Name: name, URL: urlString, LastModified: lastModfified.Format("Mon Jan _2 15:04:05 2006")})
+			releases = append(releases,
+				Release{
+					Name:    name,
+					URL:     urlString,
+					Version: version,
+					Date:    date.Format("Mon Jan _2 15:04:05 MST 2006"),
+					Commit:  commit,
+				})
 		}
 	}
 
-	return WriteHTMLForLinks(path, bucketName, bucketName, links)
+	return WriteHTMLForLinks(path, bucketName, bucketName, releases)
 }
 
-func reverse(a []Link) []Link {
+func parseName(name string, prefix string, suffix string) (version string, t time.Time, commit string, err error) {
+	t = time.Unix(0, 0)
+
+	verstr := name[len(prefix) : len(name)-len(suffix)]
+	sversion, err := semver.Make(verstr)
+	if err != nil {
+		return
+	}
+	version = fmt.Sprintf("%d.%d.%d", sversion.Major, sversion.Minor, sversion.Patch)
+
+	if len(sversion.Pre) != 1 {
+		err = fmt.Errorf("Invalid prerelease")
+		return
+	}
+
+	commit = strings.Join(sversion.Build, " ")
+
+	d := fmt.Sprintf("%d", sversion.Pre[0].VersionNum)
+	t, err = time.Parse("20060102150405", d)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+func reverse(a []Release) []Release {
 	for left, right := 0, len(a)-1; left < right; left, right = left+1, right-1 {
 		a[left], a[right] = a[right], a[left]
 	}
@@ -73,18 +107,18 @@ var htmlTemplate = `
 </head>
 <body>
 	<h3>{{ .Header }}</h3>
-  {{ range $index, $value := .Links }}
-    <li><a href="{{ $value.URL }}">{{ $value.Name }}</a> {{ $value.LastModified }}</li>
+  {{ range $index, $value := .Releases }}
+    <li><a href="{{ $value.URL }}">{{ $value.Name }}</a> <strong>{{ $value.Version }}</strong> <em>{{ $value.Date }}</em> <a href="https://github.com/keybase/client/commit/{{ $value.Commit }}"">{{ $value.Commit }}</a></li>
   {{ end }}
 </body>
 </html>
 `
 
-func WriteHTMLForLinks(path string, title string, header string, links []Link) error {
+func WriteHTMLForLinks(path string, title string, header string, releases []Release) error {
 	vars := map[string]interface{}{
-		"Title":  title,
-		"Header": header,
-		"Links":  reverse(links),
+		"Title":    title,
+		"Header":   header,
+		"Releases": reverse(releases),
 	}
 
 	t, err := template.New("t").Parse(htmlTemplate)
