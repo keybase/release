@@ -79,6 +79,14 @@ func WriteHTML(path string, bucketName string, prefixes string, suffix string) e
 	return WriteHTMLForLinks(path, bucketName, sections)
 }
 
+func removeExt(name string) string {
+	suffix := filepath.Ext(name)
+	if len(suffix) > 0 {
+		name = name[0 : len(name)-len(suffix)]
+	}
+	return name
+}
+
 func parseName(name string, prefix string) (version string, t time.Time, commit string, err error) {
 	t = time.Unix(0, 0)
 
@@ -86,9 +94,8 @@ func parseName(name string, prefix string) (version string, t time.Time, commit 
 	if start == -1 {
 		return
 	}
-	suffix := filepath.Ext(name)
-
-	verstr := name[start : len(name)-len(suffix)]
+	name = name[start:len(name)]
+	verstr := removeExt(name)
 	sversion, err := semver.Make(verstr)
 	if err != nil {
 		return
@@ -101,6 +108,10 @@ func parseName(name string, prefix string) (version string, t time.Time, commit 
 	}
 
 	commit = strings.Join(sversion.Build, " ")
+	// Detect if really sha commit
+	if len(commit) != 7 {
+		commit = ""
+	}
 
 	d := fmt.Sprintf("%d", sversion.Pre[0].VersionNum)
 	t, err = time.Parse("20060102150405", d)
