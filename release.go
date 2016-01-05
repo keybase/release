@@ -67,7 +67,7 @@ var (
 
 	indexHTMLCmd        = app.Command("index-html", "Generate index.html for s3 bucket.")
 	indexHTMLBucketName = indexHTMLCmd.Flag("bucket-name", "Bucket name to index").Required().String()
-	indexHTMLPrefix     = indexHTMLCmd.Flag("prefix", "Prefix of files").Required().String()
+	indexHTMLPrefixes   = indexHTMLCmd.Flag("prefixes", "Prefixes to include (comma-separated)").Required().String()
 	indexHTMLSuffix     = indexHTMLCmd.Flag("suffix", "Suffix of files").String()
 	indexHTMLDest       = indexHTMLCmd.Flag("dest", "Destination file").Required().String()
 
@@ -139,7 +139,7 @@ func main() {
 		}
 		fmt.Fprintf(os.Stdout, "%s\n", out)
 	case indexHTMLCmd.FullCommand():
-		err := s3.WriteHTML(*indexHTMLDest, *indexHTMLBucketName, *indexHTMLPrefix, *indexHTMLSuffix)
+		err := s3.WriteHTML(*indexHTMLDest, *indexHTMLBucketName, *indexHTMLPrefixes, *indexHTMLSuffix)
 		if err != nil {
 			log.Fatal(err)
 		}

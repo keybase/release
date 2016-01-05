@@ -7,7 +7,9 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/url"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -17,6 +19,11 @@ import (
 	"github.com/goamz/goamz/s3"
 )
 
+type Section struct {
+	Header   string
+	Releases []Release
+}
+
 type Release struct {
 	Name    string
 	URL     string
@@ -25,7 +32,7 @@ type Release struct {
 	Commit  string
 }
 
-func WriteHTML(path string, bucketName string, prefix string, suffix string) error {
+func WriteHTML(path string, bucketName string, prefixes string, suffix string) error {
 	auth, err := aws.EnvAuth()
 	if err != nil {
 		return err
@@ -35,38 +42,53 @@ func WriteHTML(path string, bucketName string, prefix string, suffix string) err
 	if bucket == nil {
 		return fmt.Errorf("Bucket %s not found", bucketName)
 	}
-	resp, err := bucket.List(prefix, "", "", 0)
-	if err != nil {
-		return err
-	}
 
-	var releases []Release
-	for _, k := range resp.Contents {
-		if strings.HasSuffix(k.Key, suffix) {
-			name := k.Key
-			urlString := fmt.Sprintf("https://s3.amazonaws.com/%s/%s", bucketName, url.QueryEscape(name))
-			version, date, commit, err := parseName(name, prefix, suffix)
-			if err != nil {
-				return err
-			}
-			releases = append(releases,
-				Release{
-					Name:    name,
-					URL:     urlString,
-					Version: version,
-					Date:    date.Format("Mon Jan _2 15:04:05 MST 2006"),
-					Commit:  commit,
-				})
+	var sections []Section
+	for _, prefix := range strings.Split(prefixes, ",") {
+		resp, err := bucket.List(prefix, "", "", 0)
+		if err != nil {
+			return err
 		}
+
+		var releases []Release
+		for _, k := range resp.Contents {
+			if strings.HasSuffix(k.Key, suffix) {
+				key := k.Key
+				name := key[len(prefix):]
+				urlString := fmt.Sprintf("https://s3.amazonaws.com/%s/%s%s", bucketName, prefix, url.QueryEscape(name))
+				version, date, commit, err := parseName(name, prefix)
+				if err != nil {
+					log.Printf("Couldn't get version from name: %s\n", name)
+				}
+				releases = append(releases,
+					Release{
+						Name:    name,
+						URL:     urlString,
+						Version: version,
+						Date:    date.Format("Mon Jan _2 15:04:05 MST 2006"),
+						Commit:  commit,
+					})
+			}
+		}
+		sections = append(sections, Section{
+			Header:   prefix,
+			Releases: reverse(releases),
+		})
 	}
 
-	return WriteHTMLForLinks(path, bucketName, bucketName, releases)
+	return WriteHTMLForLinks(path, bucketName, sections)
 }
 
-func parseName(name string, prefix string, suffix string) (version string, t time.Time, commit string, err error) {
+func parseName(name string, prefix string) (version string, t time.Time, commit string, err error) {
 	t = time.Unix(0, 0)
 
-	verstr := name[len(prefix) : len(name)-len(suffix)]
+	start := strings.IndexAny(name, "123456789")
+	if start == -1 {
+		return
+	}
+	suffix := filepath.Ext(name)
+
+	verstr := name[start : len(name)-len(suffix)]
 	sversion, err := semver.Make(verstr)
 	if err != nil {
 		return
@@ -106,19 +128,22 @@ var htmlTemplate = `
   </style>
 </head>
 <body>
-	<h3>{{ .Header }}</h3>
-  {{ range $index, $value := .Releases }}
-    <li><a href="{{ $value.URL }}">{{ $value.Name }}</a> <strong>{{ $value.Version }}</strong> <em>{{ $value.Date }}</em> <a href="https://github.com/keybase/client/commit/{{ $value.Commit }}"">{{ $value.Commit }}</a></li>
-  {{ end }}
+	{{ range $index, $sec := .Sections }}
+		<h3>{{ $sec.Header }}</h3>
+		<ul>
+		{{ range $index2, $rel := $sec.Releases }}
+		<li><a href="{{ $rel.URL }}">{{ $rel.Name }}</a> <strong>{{ $rel.Version }}</strong> <em>{{ $rel.Date }}</em> <a href="https://github.com/keybase/client/commit/{{ $rel.Commit }}"">{{ $rel.Commit }}</a></li>
+		{{ end }}
+		</ul>
+	{{ end }}
 </body>
 </html>
 `
 
-func WriteHTMLForLinks(path string, title string, header string, releases []Release) error {
+func WriteHTMLForLinks(path string, title string, sections []Section) error {
 	vars := map[string]interface{}{
 		"Title":    title,
-		"Header":   header,
-		"Releases": reverse(releases),
+		"Sections": sections,
 	}
 
 	t, err := template.New("t").Parse(htmlTemplate)
