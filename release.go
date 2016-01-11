@@ -62,8 +62,8 @@ var (
 
 	updateJSONCmd     = app.Command("update-json", "Generate update.json file for updater.")
 	updateJSONVersion = updateJSONCmd.Flag("version", "Version").Required().String()
-	updateJSONSrc     = updateJSONCmd.Flag("src", "Source file").Required().ExistingFile()
-	updateJSONURI     = updateJSONCmd.Flag("uri", "URI for location of files").Required().URL()
+	updateJSONSrc     = updateJSONCmd.Flag("src", "Source file").ExistingFile()
+	updateJSONURI     = updateJSONCmd.Flag("uri", "URI for location of files").URL()
 
 	indexHTMLCmd        = app.Command("index-html", "Generate index.html for s3 bucket.")
 	indexHTMLBucketName = indexHTMLCmd.Flag("bucket-name", "Bucket name to index").Required().String()
@@ -123,16 +123,20 @@ func main() {
 			log.Fatal(err)
 		}
 	case updateJSONCmd.FullCommand():
-		fileName := path.Base(*updateJSONSrc)
-		urlString := fmt.Sprintf("%s/%s", *updateJSONURI, url.QueryEscape(fileName))
 		update := keybase1.Update{
 			Version: *updateJSONVersion,
 			Name:    tag(*updateJSONVersion),
-			Asset: keybase1.Asset{
+		}
+
+		if *updateJSONSrc != "" && updateJSONURI != nil {
+			fileName := path.Base(*updateJSONSrc)
+			urlString := fmt.Sprintf("%s/%s", *updateJSONURI, url.QueryEscape(fileName))
+			update.Asset = keybase1.Asset{
 				Name: fileName,
 				Url:  urlString,
-			},
+			}
 		}
+
 		out, err := json.MarshalIndent(update, "", "  ")
 		if err != nil {
 			log.Fatal(err)
