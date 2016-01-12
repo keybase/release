@@ -9,14 +9,12 @@ import (
 	"io/ioutil"
 	"log"
 	"net/url"
-	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/alecthomas/template"
-	"github.com/blang/semver"
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/s3"
+	"github.com/keybase/release/version"
 )
 
 type Section struct {
@@ -56,7 +54,7 @@ func WriteHTML(path string, bucketName string, prefixes string, suffix string) e
 				key := k.Key
 				name := key[len(prefix):]
 				urlString := fmt.Sprintf("https://s3.amazonaws.com/%s/%s%s", bucketName, prefix, url.QueryEscape(name))
-				version, date, commit, err := parseName(name, prefix)
+				version, date, commit, err := version.Parse(name)
 				if err != nil {
 					log.Printf("Couldn't get version from name: %s\n", name)
 				}
@@ -77,49 +75,6 @@ func WriteHTML(path string, bucketName string, prefixes string, suffix string) e
 	}
 
 	return WriteHTMLForLinks(path, bucketName, sections)
-}
-
-func removeExt(name string) string {
-	suffix := filepath.Ext(name)
-	if len(suffix) > 0 {
-		name = name[0 : len(name)-len(suffix)]
-	}
-	return name
-}
-
-func parseName(name string, prefix string) (version string, t time.Time, commit string, err error) {
-	t = time.Unix(0, 0)
-
-	start := strings.IndexAny(name, "123456789")
-	if start == -1 {
-		return
-	}
-	name = name[start:len(name)]
-	verstr := removeExt(name)
-	sversion, err := semver.Make(verstr)
-	if err != nil {
-		return
-	}
-	version = fmt.Sprintf("%d.%d.%d", sversion.Major, sversion.Minor, sversion.Patch)
-
-	if len(sversion.Pre) != 1 {
-		err = fmt.Errorf("Invalid prerelease")
-		return
-	}
-
-	commit = strings.Join(sversion.Build, " ")
-	// Detect if really sha commit
-	if len(commit) != 7 {
-		commit = ""
-	}
-
-	d := fmt.Sprintf("%d", sversion.Pre[0].VersionNum)
-	t, err = time.Parse("20060102150405", d)
-	if err != nil {
-		return
-	}
-
-	return
 }
 
 func reverse(a []Release) []Release {
