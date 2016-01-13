@@ -60,6 +60,14 @@ func WriteHTML(path string, bucketName string, prefixes string, suffix string) e
 				if err != nil {
 					log.Printf("Couldn't get version from name: %s\n", name)
 				}
+
+				// Convert to Eastern
+				locationNewYork, err := time.LoadLocation("America/New_York")
+				if err != nil {
+					log.Printf("Couldn't load location: %s", err)
+				}
+				date = date.In(locationNewYork)
+
 				releases = append(releases,
 					Release{
 						Name:    name,
