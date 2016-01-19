@@ -5,45 +5,52 @@ package version
 
 import (
 	"fmt"
+	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/blang/semver"
 )
 
-func ParseVersion(s string) ([]string, error) {
-	version, err := semver.Make(s)
+func Parse(name string) (version string, t time.Time, commit string, err error) {
+	t = time.Unix(0, 0)
+
+	start := strings.IndexAny(name, "123456789")
+	if start == -1 {
+		return
+	}
+	name = name[start:len(name)]
+	verstr := removeExt(name)
+	sversion, err := semver.Make(verstr)
 	if err != nil {
-		return nil, err
+		return
+	}
+	version = fmt.Sprintf("%d.%d.%d", sversion.Major, sversion.Minor, sversion.Patch)
+
+	if len(sversion.Pre) != 1 {
+		err = fmt.Errorf("Invalid prerelease")
+		return
 	}
 
-	parsed := []string{
-		fmt.Sprintf("%d", version.Major),
-		fmt.Sprintf("%d", version.Minor),
-		fmt.Sprintf("%d", version.Patch),
+	commit = strings.Join(sversion.Build, " ")
+	// Detect if really sha commit
+	if len(commit) != 7 {
+		commit = ""
 	}
 
-	if len(version.Pre) > 1 {
-		return nil, fmt.Errorf("Multiple prerelease not supported")
+	d := fmt.Sprintf("%d", sversion.Pre[0].VersionNum)
+	t, err = time.Parse("20060102150405", d)
+	if err != nil {
+		return
 	}
 
-	if len(version.Pre) == 1 {
-		if version.Pre[0].IsNum {
-			parsed = append(parsed, fmt.Sprintf("%d", version.Pre[0].VersionNum))
-		} else {
-			parsed = append(parsed, version.Pre[0].VersionStr)
-		}
-	} else {
-		parsed = append(parsed, "")
-	}
+	return
+}
 
-	if len(version.Build) > 1 {
-		return nil, fmt.Errorf("Multiple comments not supported")
+func removeExt(name string) string {
+	suffix := filepath.Ext(name)
+	if len(suffix) > 0 {
+		name = name[0 : len(name)-len(suffix)]
 	}
-
-	if len(version.Build) == 1 {
-		parsed = append(parsed, version.Build[0])
-	} else {
-		parsed = append(parsed, "")
-	}
-
-	return parsed, nil
+	return name
 }
