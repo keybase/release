@@ -4,8 +4,11 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/url"
 	"os"
@@ -30,6 +33,21 @@ func githubToken(required bool) string {
 
 func tag(version string) string {
 	return fmt.Sprintf("v%s", version)
+}
+
+func digest(p string) (digest string, err error) {
+	hasher := sha256.New()
+	f, err := os.Open(p)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	if _, ioerr := io.Copy(hasher, f); ioerr != nil {
+		err = ioerr
+		return
+	}
+	digest = hex.EncodeToString(hasher.Sum(nil))
+	return
 }
 
 var (
@@ -128,13 +146,32 @@ func main() {
 			Name:    tag(*updateJSONVersion),
 		}
 
-		if *updateJSONSrc != "" && updateJSONURI != nil {
-			fileName := path.Base(*updateJSONSrc)
+		src := *updateJSONSrc
+		if src != "" && updateJSONURI != nil {
+			fileName := path.Base(src)
+
+			_, date, _, err := version.Parse(fileName)
+			if err != nil {
+				log.Printf("Error parsing version, time, commit: %s", err)
+			} else {
+				t := keybase1.ToTime(date)
+				update.PublishedAt = &t
+			}
+
 			urlString := fmt.Sprintf("%s/%s", *updateJSONURI, url.QueryEscape(fileName))
-			update.Asset = keybase1.Asset{
+			asset := keybase1.Asset{
 				Name: fileName,
 				Url:  urlString,
 			}
+
+			digest, err := digest(src)
+			if err != nil {
+				log.Printf("Error creating digest: %s", err)
+			} else {
+				asset.Digest = digest
+			}
+
+			update.Asset = &asset
 		}
 
 		out, err := json.MarshalIndent(update, "", "  ")
@@ -148,10 +185,12 @@ func main() {
 			log.Fatal(err)
 		}
 	case parseVersionCmd.FullCommand():
-		parsed, err := version.ParseVersion(*parseVersionString)
+		ver, date, commit, err := version.Parse(*parseVersionString)
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf(strings.Join(parsed, "\n"))
+		fmt.Printf("%s\n", ver)
+		fmt.Printf("%s\n", date)
+		fmt.Printf("%s\n", commit)
 	}
 }
