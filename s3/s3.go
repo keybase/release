@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/alecthomas/template"
 	"github.com/goamz/goamz/aws"
