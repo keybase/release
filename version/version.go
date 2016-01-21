@@ -6,6 +6,7 @@ package version
 import (
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -13,6 +14,10 @@ import (
 )
 
 func Parse(name string) (version string, t time.Time, commit string, err error) {
+	if strings.HasSuffix(name, ".deb") || strings.HasSuffix(name, ".rpm") {
+		return ParseLinux(name)
+	}
+
 	t = time.Unix(0, 0)
 
 	start := strings.IndexAny(name, "123456789")
@@ -44,6 +49,19 @@ func Parse(name string) (version string, t time.Time, commit string, err error) 
 		return
 	}
 
+	return
+}
+
+// The Linux packages have different patterns of dashes and underscores, and
+// RPM requires some hacks that break SemVer. Parse these packages with a
+// stupid regex.
+func ParseLinux(name string) (version string, t time.Time, commit string, err error) {
+	versionRegex, _ := regexp.Compile("(\\d+\\.\\d+\\.\\d+)[-.](\\d+)[+.]([[:alnum:]]+)")
+	parts := versionRegex.FindAllStringSubmatch(name, -1)
+	version = parts[0][1]
+	date := parts[0][2]
+	commit = parts[0][3]
+	t, _ = time.Parse("20060102150405", date)
 	return
 }
 
