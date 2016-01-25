@@ -31,12 +31,20 @@ type Release struct {
 	Commit  string
 }
 
-func WriteHTML(path string, bucketName string, prefixes string, suffix string) error {
+func NewClient() (client *s3.S3, err error) {
 	auth, err := aws.EnvAuth()
 	if err != nil {
-		return err
+		return
 	}
-	client := s3.New(auth, aws.USEast)
+	client = s3.New(auth, aws.USEast)
+	return
+}
+
+func WriteHTML(path string, bucketName string, prefixes string, suffix string) error {
+	client, err := NewClient()
+	if err != nil {
+
+	}
 	bucket := client.Bucket(bucketName)
 	if bucket == nil {
 		return fmt.Errorf("Bucket %s not found", bucketName)
@@ -135,4 +143,49 @@ func WriteHTMLForLinks(path string, title string, sections []Section) error {
 		return ioutil.WriteFile(path, data.Bytes(), 0644)
 	}
 	return nil
+}
+
+func LinkLatest(bucketName string) error {
+	client, err := NewClient()
+	if err != nil {
+		return err
+	}
+	bucket := client.Bucket(bucketName)
+
+	linksForPrefix := map[string]string{
+		"darwin/":             "latest.dmg",
+		"linux_binaries/deb/": "latest.deb",
+		"linux_binaries/rpm/": "latest.rpm",
+	}
+
+	for prefix, name := range linksForPrefix {
+		resp, err := bucket.List(prefix, "", "", 0)
+		if err != nil {
+			return err
+		}
+		contents := resp.Contents
+		if err != nil {
+			return err
+		}
+		if len(contents) == 0 {
+			continue
+		}
+		last := contents[len(contents)-1]
+		url := urlString(last, bucketName, prefix)
+
+		headers := map[string][]string{
+			"x-amz-website-redirect-location": []string{url},
+		}
+		err = bucket.PutHeader(name, []byte{}, headers, s3.PublicRead)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func urlString(k s3.Key, bucketName string, prefix string) string {
+	key := k.Key
+	name := key[len(prefix):]
+	return fmt.Sprintf("https://s3.amazonaws.com/%s/%s%s", bucketName, prefix, url.QueryEscape(name))
 }
