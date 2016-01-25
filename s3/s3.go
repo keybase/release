@@ -87,18 +87,11 @@ func WriteHTML(path string, bucketName string, prefixes string, suffix string) e
 		}
 		sections = append(sections, Section{
 			Header:   prefix,
-			Releases: reverse(releases),
+			Releases: reverseRelease(releases),
 		})
 	}
 
 	return WriteHTMLForLinks(path, bucketName, sections)
-}
-
-func reverse(a []Release) []Release {
-	for left, right := 0, len(a)-1; left < right; left, right = left+1, right-1 {
-		a[left], a[right] = a[right], a[left]
-	}
-	return a
 }
 
 var htmlTemplate = `
@@ -145,40 +138,48 @@ func WriteHTMLForLinks(path string, title string, sections []Section) error {
 	return nil
 }
 
-func LinkLatest(bucketName string) error {
+type Link struct {
+	Prefix string
+	Suffix string
+	Name   string
+}
+
+func CopyLatest(bucketName string) error {
 	client, err := NewClient()
 	if err != nil {
 		return err
 	}
 	bucket := client.Bucket(bucketName)
 
-	linksForPrefix := map[string]string{
-		"darwin/":             "latest.dmg",
-		"linux_binaries/deb/": "latest.deb",
-		"linux_binaries/rpm/": "latest.rpm",
+	linksForPrefix := []Link{
+		Link{Prefix: "darwin/", Name: "Keybase.dmg"},
+		Link{Prefix: "linux_binaries/deb/", Suffix: "_amd64.deb", Name: "keybase_amd64.deb"},
+		Link{Prefix: "linux_binaries/rpm/", Suffix: ".x86_64.rpm", Name: "keybase_amd64.rpm"},
 	}
 
-	for prefix, name := range linksForPrefix {
-		resp, err := bucket.List(prefix, "", "", 0)
+	for _, link := range linksForPrefix {
+		resp, err := bucket.List(link.Prefix, "", "", 0)
 		if err != nil {
 			return err
 		}
-		contents := resp.Contents
-		if err != nil {
-			return err
-		}
-		if len(contents) == 0 {
-			continue
-		}
-		last := contents[len(contents)-1]
-		url := urlString(last, bucketName, prefix)
+		keys := reverseKey(resp.Contents)
+		for _, k := range keys {
+			if !strings.HasSuffix(k.Key, link.Suffix) {
+				continue
+			}
 
-		headers := map[string][]string{
-			"x-amz-website-redirect-location": []string{url},
-		}
-		err = bucket.PutHeader(name, []byte{}, headers, s3.PublicRead)
-		if err != nil {
-			return err
+			url := urlString(k, bucketName, link.Prefix)
+			// Instead of linking, we're making copies. S3 linking has some issues.
+			// headers := map[string][]string{
+			// 	"x-amz-website-redirect-location": []string{url},
+			// }
+			//err = bucket.PutHeader(name, []byte{}, headers, s3.PublicRead)
+			log.Printf("Copying %s from %s (latest)\n", link.Name, k.Key)
+			_, err = bucket.PutCopy(link.Name, s3.PublicRead, s3.CopyOptions{}, url)
+			if err != nil {
+				return err
+			}
+			break
 		}
 	}
 	return nil
@@ -188,4 +189,18 @@ func urlString(k s3.Key, bucketName string, prefix string) string {
 	key := k.Key
 	name := key[len(prefix):]
 	return fmt.Sprintf("https://s3.amazonaws.com/%s/%s%s", bucketName, prefix, url.QueryEscape(name))
+}
+
+func reverseKey(a []s3.Key) []s3.Key {
+	for left, right := 0, len(a)-1; left < right; left, right = left+1, right-1 {
+		a[left], a[right] = a[right], a[left]
+	}
+	return a
+}
+
+func reverseRelease(a []Release) []Release {
+	for left, right := 0, len(a)-1; left < right; left, right = left+1, right-1 {
+		a[left], a[right] = a[right], a[left]
+	}
+	return a
 }

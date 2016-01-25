@@ -89,8 +89,8 @@ var (
 	indexHTMLSuffix     = indexHTMLCmd.Flag("suffix", "Suffix of files").String()
 	indexHTMLDest       = indexHTMLCmd.Flag("dest", "Destination file").Required().String()
 
-	linkLatestCmd        = app.Command("link-latest", "Generate latest links for s3 bucket.")
-	linkLatestBucketName = linkLatestCmd.Flag("bucket-name", "Bucket name to use").Required().String()
+	latestCmd        = app.Command("latest", "Generate latest for s3 bucket.")
+	latestBucketName = latestCmd.Flag("bucket-name", "Bucket name to use").Required().String()
 
 	parseVersionCmd    = app.Command("version-parse", "Parse a sematic version string.")
 	parseVersionString = parseVersionCmd.Arg("version", "Semantic version to parse").Required().String()
@@ -187,8 +187,8 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-	case linkLatestCmd.FullCommand():
-		err := s3.LinkLatest(*linkLatestBucketName)
+	case latestCmd.FullCommand():
+		err := s3.CopyLatest(*latestBucketName)
 		if err != nil {
 			log.Fatal(err)
 		}
