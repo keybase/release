@@ -43,7 +43,7 @@ func NewClient() (client *s3.S3, err error) {
 func WriteHTML(path string, bucketName string, prefixes string, suffix string) error {
 	client, err := NewClient()
 	if err != nil {
-
+		return err
 	}
 	bucket := client.Bucket(bucketName)
 	if bucket == nil {
