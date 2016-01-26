@@ -56,9 +56,10 @@ func WriteHTML(path string, bucketName string, prefixes string, suffix string) e
 		if err != nil {
 			return err
 		}
+		keys := reverseKey(resp.Contents, 20)
 
 		var releases []Release
-		for _, k := range resp.Contents {
+		for _, k := range keys {
 			if strings.HasSuffix(k.Key, suffix) {
 				key := k.Key
 				name := key[len(prefix):]
@@ -87,7 +88,7 @@ func WriteHTML(path string, bucketName string, prefixes string, suffix string) e
 		}
 		sections = append(sections, Section{
 			Header:   prefix,
-			Releases: reverseRelease(releases),
+			Releases: releases,
 		})
 	}
 
@@ -162,7 +163,7 @@ func CopyLatest(bucketName string) error {
 		if err != nil {
 			return err
 		}
-		keys := reverseKey(resp.Contents)
+		keys := reverseKey(resp.Contents, 0)
 		for _, k := range keys {
 			if !strings.HasSuffix(k.Key, link.Suffix) {
 				continue
@@ -191,16 +192,12 @@ func urlString(k s3.Key, bucketName string, prefix string) string {
 	return fmt.Sprintf("https://s3.amazonaws.com/%s/%s%s", bucketName, prefix, url.QueryEscape(name))
 }
 
-func reverseKey(a []s3.Key) []s3.Key {
+func reverseKey(a []s3.Key, truncate int) []s3.Key {
 	for left, right := 0, len(a)-1; left < right; left, right = left+1, right-1 {
 		a[left], a[right] = a[right], a[left]
 	}
-	return a
-}
-
-func reverseRelease(a []Release) []Release {
-	for left, right := 0, len(a)-1; left < right; left, right = left+1, right-1 {
-		a[left], a[right] = a[right], a[left]
+	if truncate > 0 && len(a) > truncate {
+		a = a[0:truncate]
 	}
 	return a
 }
