@@ -9,6 +9,8 @@ import (
 	"io/ioutil"
 	"log"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -134,6 +136,10 @@ func WriteHTMLForLinks(path string, title string, sections []Section) error {
 		if err != nil {
 			return err
 		}
+		err := makeParentDirs(path)
+		if err != nil {
+			return err
+		}
 		return ioutil.WriteFile(path, data.Bytes(), 0644)
 	}
 	return nil
@@ -200,4 +206,31 @@ func reverseKey(a []s3.Key, truncate int) []s3.Key {
 		a = a[0:truncate]
 	}
 	return a
+}
+
+func makeParentDirs(filename string) error {
+	dir, _ := filepath.Split(filename)
+	exists, err := fileExists(dir)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		err = os.MkdirAll(dir, 0755)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func fileExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
 }
