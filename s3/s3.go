@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -26,11 +27,28 @@ type Section struct {
 }
 
 type Release struct {
-	Name    string
-	URL     string
-	Version string
-	Date    string
-	Commit  string
+	Name       string
+	Key        s3.Key
+	URL        string
+	Version    string
+	DateString string
+	Date       time.Time
+	Commit     string
+}
+
+type ByRelease []Release
+
+func (s ByRelease) Len() int {
+	return len(s)
+}
+
+func (s ByRelease) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func (s ByRelease) Less(i, j int) bool {
+	// Reverse date order
+	return s[j].Date.Before(s[i].Date)
 }
 
 func NewClient() (client *s3.S3, err error) {
@@ -40,6 +58,46 @@ func NewClient() (client *s3.S3, err error) {
 	}
 	client = s3.New(auth, aws.USEast)
 	return
+}
+
+func loadReleases(keys []s3.Key, bucketName string, prefix string, suffix string, truncate int) []Release {
+	var releases []Release
+	for _, k := range keys {
+		if strings.HasSuffix(k.Key, suffix) {
+			key := k.Key
+			name := key[len(prefix):]
+			urlString := fmt.Sprintf("https://s3.amazonaws.com/%s/%s%s", bucketName, prefix, url.QueryEscape(name))
+			version, date, commit, err := version.Parse(name)
+			if err != nil {
+				log.Printf("Couldn't get version from name: %s\n", name)
+			}
+
+			// Convert to Eastern
+			locationNewYork, err := time.LoadLocation("America/New_York")
+			if err != nil {
+				log.Printf("Couldn't load location: %s", err)
+			}
+			date = date.In(locationNewYork)
+
+			releases = append(releases,
+				Release{
+					Name:       name,
+					Key:        k,
+					URL:        urlString,
+					Version:    version,
+					Date:       date,
+					DateString: date.Format("Mon Jan _2 15:04:05 MST 2006"),
+					Commit:     commit,
+				})
+		}
+	}
+	// TODO: Should also sanity check that version sort is same as time sort
+	// otherwise something got messed up
+	sort.Sort(ByRelease(releases))
+	if truncate > 0 && len(releases) > truncate {
+		releases = releases[0:truncate]
+	}
+	return releases
 }
 
 func WriteHTML(path string, bucketName string, prefixes string, suffix string) error {
@@ -58,34 +116,12 @@ func WriteHTML(path string, bucketName string, prefixes string, suffix string) e
 		if err != nil {
 			return err
 		}
-		keys := reverseKey(resp.Contents, 20)
 
-		var releases []Release
-		for _, k := range keys {
-			if strings.HasSuffix(k.Key, suffix) {
-				key := k.Key
-				name := key[len(prefix):]
-				urlString := fmt.Sprintf("https://s3.amazonaws.com/%s/%s%s", bucketName, prefix, url.QueryEscape(name))
-				version, date, commit, err := version.Parse(name)
-				if err != nil {
-					log.Printf("Couldn't get version from name: %s\n", name)
-				}
-
-				// Convert to Eastern
-				locationNewYork, err := time.LoadLocation("America/New_York")
-				if err != nil {
-					log.Printf("Couldn't load location: %s", err)
-				}
-				date = date.In(locationNewYork)
-
-				releases = append(releases,
-					Release{
-						Name:    name,
-						URL:     urlString,
-						Version: version,
-						Date:    date.Format("Mon Jan _2 15:04:05 MST 2006"),
-						Commit:  commit,
-					})
+		releases := loadReleases(resp.Contents, bucketName, prefix, suffix, 20)
+		if len(releases) > 0 {
+			log.Printf("Found %d release(s) at %s\n", len(releases), prefix)
+			for _, release := range releases {
+				log.Printf(" %s %s %s\n", release.Name, release.Version, release.DateString)
 			}
 		}
 		sections = append(sections, Section{
@@ -169,8 +205,9 @@ func CopyLatest(bucketName string) error {
 		if err != nil {
 			return err
 		}
-		keys := reverseKey(resp.Contents, 0)
-		for _, k := range keys {
+		releases := loadReleases(resp.Contents, bucketName, link.Prefix, link.Suffix, 0)
+		for _, release := range releases {
+			k := release.Key
 			if !strings.HasSuffix(k.Key, link.Suffix) {
 				continue
 			}
@@ -196,16 +233,6 @@ func urlString(k s3.Key, bucketName string, prefix string) string {
 	key := k.Key
 	name := key[len(prefix):]
 	return fmt.Sprintf("https://s3.amazonaws.com/%s/%s%s", bucketName, prefix, url.QueryEscape(name))
-}
-
-func reverseKey(a []s3.Key, truncate int) []s3.Key {
-	for left, right := 0, len(a)-1; left < right; left, right = left+1, right-1 {
-		a[left], a[right] = a[right], a[left]
-	}
-	if truncate > 0 && len(a) > truncate {
-		a = a[0:truncate]
-	}
-	return a
 }
 
 func makeParentDirs(filename string) error {
