@@ -198,7 +198,7 @@ func CopyLatest(bucketName string) error {
 		Link{Prefix: "darwin/", Name: "Keybase.dmg"},
 		Link{Prefix: "linux_binaries/deb/", Suffix: "_amd64.deb", Name: "keybase_amd64.deb"},
 		Link{Prefix: "linux_binaries/rpm/", Suffix: ".x86_64.rpm", Name: "keybase_amd64.rpm"},
-		Link{Prefix: "windows/", Suffix: "_386.exe", Name: "keybase_setup_386.exe"},
+		Link{Prefix: "windows/", Suffix: ".386.exe", Name: "keybase_setup_386.exe"},
 	}
 
 	for _, link := range linksForPrefix {
