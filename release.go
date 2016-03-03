@@ -4,21 +4,15 @@
 package main
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
-	"io"
 	"log"
-	"net/url"
 	"os"
-	"path"
 	"runtime"
 	"strings"
 
-	keybase1 "github.com/keybase/client/go/protocol"
 	gh "github.com/keybase/release/github"
 	"github.com/keybase/release/s3"
+	"github.com/keybase/release/update"
 	"github.com/keybase/release/version"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
@@ -33,21 +27,6 @@ func githubToken(required bool) string {
 
 func tag(version string) string {
 	return fmt.Sprintf("v%s", version)
-}
-
-func digest(p string) (digest string, err error) {
-	hasher := sha256.New()
-	f, err := os.Open(p)
-	if err != nil {
-		return
-	}
-	defer f.Close()
-	if _, ioerr := io.Copy(hasher, f); ioerr != nil {
-		err = ioerr
-		return
-	}
-	digest = hex.EncodeToString(hasher.Sum(nil))
-	return
 }
 
 var (
@@ -78,10 +57,11 @@ var (
 	downloadVersion = downloadCmd.Flag("version", "Version").Required().String()
 	downloadSrc     = downloadCmd.Flag("src", "Source file").Required().ExistingFile()
 
-	updateJSONCmd     = app.Command("update-json", "Generate update.json file for updater.")
-	updateJSONVersion = updateJSONCmd.Flag("version", "Version").Required().String()
-	updateJSONSrc     = updateJSONCmd.Flag("src", "Source file").ExistingFile()
-	updateJSONURI     = updateJSONCmd.Flag("uri", "URI for location of files").URL()
+	updateJSONCmd       = app.Command("update-json", "Generate update.json file for updater.")
+	updateJSONVersion   = updateJSONCmd.Flag("version", "Version").Required().String()
+	updateJSONSrc       = updateJSONCmd.Flag("src", "Source file").ExistingFile()
+	updateJSONURI       = updateJSONCmd.Flag("uri", "URI for location of files").URL()
+	updateJSONSignature = updateJSONCmd.Flag("signature", "Signature").ExistingFile()
 
 	indexHTMLCmd        = app.Command("index-html", "Generate index.html for s3 bucket.")
 	indexHTMLBucketName = indexHTMLCmd.Flag("bucket-name", "Bucket name to index").Required().String()
@@ -144,40 +124,7 @@ func main() {
 			log.Fatal(err)
 		}
 	case updateJSONCmd.FullCommand():
-		update := keybase1.Update{
-			Version: *updateJSONVersion,
-			Name:    tag(*updateJSONVersion),
-		}
-
-		src := *updateJSONSrc
-		if src != "" && updateJSONURI != nil {
-			fileName := path.Base(src)
-
-			_, date, _, err := version.Parse(fileName)
-			if err != nil {
-				log.Printf("Error parsing version, time, commit: %s", err)
-			} else {
-				t := keybase1.ToTime(date)
-				update.PublishedAt = &t
-			}
-
-			urlString := fmt.Sprintf("%s/%s", *updateJSONURI, url.QueryEscape(fileName))
-			asset := keybase1.Asset{
-				Name: fileName,
-				Url:  urlString,
-			}
-
-			digest, err := digest(src)
-			if err != nil {
-				log.Printf("Error creating digest: %s", err)
-			} else {
-				asset.Digest = digest
-			}
-
-			update.Asset = &asset
-		}
-
-		out, err := json.MarshalIndent(update, "", "  ")
+		out, err := update.JSON(*updateJSONVersion, tag(*updateJSONVersion), *updateJSONSrc, *updateJSONURI, *updateJSONSignature)
 		if err != nil {
 			log.Fatal(err)
 		}
