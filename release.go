@@ -30,49 +30,49 @@ func tag(version string) string {
 }
 
 var (
-	app               = kingpin.New("release", "Release tool for build and release scripts.")
-	latestVersionCmd  = app.Command("latest-version", "Get latest version of a Github repo.")
+	app               = kingpin.New("release", "Release tool for build and release scripts")
+	latestVersionCmd  = app.Command("latest-version", "Get latest version of a Github repo")
 	latestVersionUser = latestVersionCmd.Flag("user", "Github user").Required().String()
 	latestVersionRepo = latestVersionCmd.Flag("repo", "Repository name").Required().String()
 
-	platformCmd = app.Command("platform", "Get the OS platform name.")
+	platformCmd = app.Command("platform", "Get the OS platform name")
 
-	urlCmd     = app.Command("url", "Get the github release URL for a repo.")
+	urlCmd     = app.Command("url", "Get the github release URL for a repo")
 	urlUser    = urlCmd.Flag("user", "Github user").Required().String()
 	urlRepo    = urlCmd.Flag("repo", "Repository name").Required().String()
 	urlVersion = urlCmd.Flag("version", "Version").Required().String()
 
-	createCmd     = app.Command("create", "Create a Github release.")
+	createCmd     = app.Command("create", "Create a Github release")
 	createRepo    = createCmd.Flag("repo", "Repository name").Required().String()
 	createVersion = createCmd.Flag("version", "Version").Required().String()
 
-	uploadCmd     = app.Command("upload", "Upload a file to a Github releaes.")
+	uploadCmd     = app.Command("upload", "Upload a file to a Github release")
 	uploadRepo    = uploadCmd.Flag("repo", "Repository name").Required().String()
 	uploadVersion = uploadCmd.Flag("version", "Version").Required().String()
 	uploadSrc     = uploadCmd.Flag("src", "Source file").Required().ExistingFile()
 	uploadDest    = uploadCmd.Flag("dest", "Destination file").String()
 
-	downloadCmd     = app.Command("download", "Download a file from a Github release.")
+	downloadCmd     = app.Command("download", "Download a file from a Github release")
 	downloadRepo    = downloadCmd.Flag("repo", "Repository name").Required().String()
 	downloadVersion = downloadCmd.Flag("version", "Version").Required().String()
 	downloadSrc     = downloadCmd.Flag("src", "Source file").Required().ExistingFile()
 
-	updateJSONCmd       = app.Command("update-json", "Generate update.json file for updater.")
+	updateJSONCmd       = app.Command("update-json", "Generate update.json file for updater")
 	updateJSONVersion   = updateJSONCmd.Flag("version", "Version").Required().String()
 	updateJSONSrc       = updateJSONCmd.Flag("src", "Source file").ExistingFile()
 	updateJSONURI       = updateJSONCmd.Flag("uri", "URI for location of files").URL()
-	updateJSONSignature = updateJSONCmd.Flag("signature", "Signature").ExistingFile()
+	updateJSONSignature = updateJSONCmd.Flag("signature", "Signature file").ExistingFile()
 
-	indexHTMLCmd        = app.Command("index-html", "Generate index.html for s3 bucket.")
+	indexHTMLCmd        = app.Command("index-html", "Generate index.html for s3 bucket")
 	indexHTMLBucketName = indexHTMLCmd.Flag("bucket-name", "Bucket name to index").Required().String()
 	indexHTMLPrefixes   = indexHTMLCmd.Flag("prefixes", "Prefixes to include (comma-separated)").Required().String()
 	indexHTMLSuffix     = indexHTMLCmd.Flag("suffix", "Suffix of files").String()
 	indexHTMLDest       = indexHTMLCmd.Flag("dest", "Destination file").Required().String()
 
-	latestCmd        = app.Command("latest", "Generate latest for s3 bucket.")
+	latestCmd        = app.Command("latest", "Generate latest for s3 bucket")
 	latestBucketName = latestCmd.Flag("bucket-name", "Bucket name to use").Required().String()
 
-	parseVersionCmd    = app.Command("version-parse", "Parse a sematic version string.")
+	parseVersionCmd    = app.Command("version-parse", "Parse a sematic version string")
 	parseVersionString = parseVersionCmd.Arg("version", "Semantic version to parse").Required().String()
 )
 
