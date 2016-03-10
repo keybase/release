@@ -9,8 +9,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/url"
-	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -51,13 +49,25 @@ func (s ByRelease) Less(i, j int) bool {
 	return s[j].Date.Before(s[i].Date)
 }
 
-func NewClient() (client *s3.S3, err error) {
+type Client struct {
+	s3 *s3.S3
+}
+
+func NewClient() (*Client, error) {
 	auth, err := aws.EnvAuth()
 	if err != nil {
-		return
+		return nil, err
 	}
-	client = s3.New(auth, aws.USEast)
-	return
+	s3 := s3.New(auth, aws.USEast)
+	return &Client{s3: s3}, nil
+}
+
+func convertEastern(t time.Time) time.Time {
+	locationNewYork, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		log.Printf("Couldn't load location: %s", err)
+	}
+	return t.In(locationNewYork)
 }
 
 func loadReleases(keys []s3.Key, bucketName string, prefix string, suffix string, truncate int) []Release {
@@ -71,14 +81,7 @@ func loadReleases(keys []s3.Key, bucketName string, prefix string, suffix string
 			if err != nil {
 				log.Printf("Couldn't get version from name: %s\n", name)
 			}
-
-			// Convert to Eastern
-			locationNewYork, err := time.LoadLocation("America/New_York")
-			if err != nil {
-				log.Printf("Couldn't load location: %s", err)
-			}
-			date = date.In(locationNewYork)
-
+			date = convertEastern(date)
 			releases = append(releases,
 				Release{
 					Name:       name,
@@ -105,7 +108,7 @@ func WriteHTML(path string, bucketName string, prefixes string, suffix string) e
 	if err != nil {
 		return err
 	}
-	bucket := client.Bucket(bucketName)
+	bucket := client.s3.Bucket(bucketName)
 	if bucket == nil {
 		return fmt.Errorf("Bucket %s not found", bucketName)
 	}
@@ -192,7 +195,11 @@ func CopyLatest(bucketName string) error {
 	if err != nil {
 		return err
 	}
-	bucket := client.Bucket(bucketName)
+	return client.CopyLatest(bucketName)
+}
+
+func (c *Client) CopyLatest(bucketName string) error {
+	bucket := c.s3.Bucket(bucketName)
 
 	linksForPrefix := []Link{
 		Link{Prefix: "darwin/", Name: "Keybase.dmg"},
@@ -230,35 +237,49 @@ func CopyLatest(bucketName string) error {
 	return nil
 }
 
-func urlString(k s3.Key, bucketName string, prefix string) string {
-	key := k.Key
-	name := key[len(prefix):]
-	return fmt.Sprintf("https://s3.amazonaws.com/%s/%s%s", bucketName, prefix, url.QueryEscape(name))
-}
-
-func makeParentDirs(filename string) error {
-	dir, _ := filepath.Split(filename)
-	exists, err := fileExists(dir)
+func UpdatePromoteChannel(bucketName string, delay time.Duration, channel string, platform string, env string) (string, error) {
+	client, err := NewClient()
 	if err != nil {
-		return err
+		return "", err
 	}
-
-	if !exists {
-		err = os.MkdirAll(dir, 0755)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return client.UpdatePromoteChannel(bucketName, delay, channel, platform, env)
 }
 
-func fileExists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
+func (c *Client) UpdatePromoteChannel(bucketName string, delay time.Duration, channel string, platform string, env string) (string, error) {
+	log.Printf("Checking whether to promote build")
+	bucket := c.s3.Bucket(bucketName)
+
+	sourceName := fmt.Sprintf("update-%s-%s-%s.json", platform, env, channel)
+	headers := map[string][]string{}
+	resp, err := bucket.Head(sourceName, headers)
+	if err != nil {
+		return "", err
 	}
-	if os.IsNotExist(err) {
-		return false, nil
+
+	// Looks like "Thu, 10 Mar 2016 01:59:30 GMT"
+	lastModifiedHeader := resp.Header["Last-Modified"]
+	var date string
+	if len(lastModifiedHeader) == 1 {
+		date = lastModifiedHeader[0]
+	} else {
+		return "", fmt.Errorf("Invalid date in header")
 	}
-	return false, err
+	fileTime, err := time.Parse("Mon, 02 Jan 2006 15:04:05 MST", date)
+	if err != nil {
+		return "", err
+	}
+	fileTime = convertEastern(fileTime)
+	log.Printf("Checking %s, last modified at: %s\n", sourceName, fileTime)
+	if time.Since(fileTime) < delay {
+		log.Printf("Not promoting, was too recent %s < %s\n", time.Since(fileTime), delay)
+		return "", nil
+	}
+
+	sourceURL := fmt.Sprintf("https://s3.amazonaws.com/%s/%s", bucketName, sourceName)
+	destName := fmt.Sprintf("update-%s-%s.json", platform, env)
+	_, err = bucket.PutCopy(destName, s3.PublicRead, s3.CopyOptions{}, sourceURL)
+	if err != nil {
+		return "", err
+	}
+	return destName, nil
 }

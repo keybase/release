@@ -74,6 +74,10 @@ var (
 
 	parseVersionCmd    = app.Command("version-parse", "Parse a sematic version string")
 	parseVersionString = parseVersionCmd.Arg("version", "Semantic version to parse").Required().String()
+
+	promoteTestBuildsCmd        = app.Command("promote-test-builds", "Promote test build")
+	promoteTestBuildsBucketName = promoteTestBuildsCmd.Flag("bucket-name", "Bucket name to use").Required().String()
+	promoteTestBuildsDelayHours = promoteTestBuildsCmd.Flag("delay", "Only promote if older than this (e.g. 24h)").Default("1m").Duration()
 )
 
 func main() {
@@ -144,8 +148,16 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf("%s\n", ver)
-		fmt.Printf("%s\n", date)
-		fmt.Printf("%s\n", commit)
+		log.Printf("%s\n", ver)
+		log.Printf("%s\n", date)
+		log.Printf("%s\n", commit)
+	case promoteTestBuildsCmd.FullCommand():
+		promoted, err := s3.UpdatePromoteChannel(*promoteTestBuildsBucketName, *promoteTestBuildsDelayHours, "test", "darwin", "prod")
+		if err != nil {
+			log.Fatal(err)
+		}
+		if promoted != "" {
+			log.Printf("Promoted build: %s\n", promoted)
+		}
 	}
 }
