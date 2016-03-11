@@ -14,8 +14,11 @@ import (
 	"time"
 
 	"github.com/alecthomas/template"
+	"github.com/blang/semver"
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/s3"
+	keybase1 "github.com/keybase/client/go/protocol"
+	"github.com/keybase/release/update"
 	"github.com/keybase/release/version"
 )
 
@@ -184,10 +187,12 @@ func WriteHTMLForLinks(path string, title string, sections []Section) error {
 	return nil
 }
 
-type Link struct {
-	Prefix string
-	Suffix string
-	Name   string
+type Platform struct {
+	Name          string
+	Prefix        string
+	PrefixSupport string
+	Suffix        string
+	LatestName    string
 }
 
 func CopyLatest(bucketName string) error {
@@ -198,88 +203,154 @@ func CopyLatest(bucketName string) error {
 	return client.CopyLatest(bucketName)
 }
 
-func (c *Client) CopyLatest(bucketName string) error {
-	bucket := c.s3.Bucket(bucketName)
-
-	linksForPrefix := []Link{
-		Link{Prefix: "darwin/", Name: "Keybase.dmg"},
-		Link{Prefix: "linux_binaries/deb/", Suffix: "_amd64.deb", Name: "keybase_amd64.deb"},
-		Link{Prefix: "linux_binaries/rpm/", Suffix: ".x86_64.rpm", Name: "keybase_amd64.rpm"},
-		Link{Prefix: "windows/", Suffix: ".386.exe", Name: "keybase_setup_386.exe"},
+func Platforms() []Platform {
+	return []Platform{
+		Platform{Name: "darwin", Prefix: "darwin/", PrefixSupport: "darwin-support/", LatestName: "Keybase.dmg"},
+		Platform{Name: "deb", Prefix: "linux_binaries/deb/", Suffix: "_amd64.deb", LatestName: "keybase_amd64.deb"},
+		Platform{Name: "rpm", Prefix: "linux_binaries/rpm/", Suffix: ".x86_64.rpm", LatestName: "keybase_amd64.rpm"},
+		Platform{Name: "windows", Prefix: "windows/", Suffix: ".386.exe", LatestName: "keybase_setup_386.exe"},
 	}
+}
 
-	for _, link := range linksForPrefix {
-		resp, err := bucket.List(link.Prefix, "", "", 0)
-		if err != nil {
-			return err
-		}
-		releases := loadReleases(resp.Contents, bucketName, link.Prefix, link.Suffix, 0)
-		for _, release := range releases {
-			k := release.Key
-			if !strings.HasSuffix(k.Key, link.Suffix) {
-				continue
-			}
-
-			url := urlString(k, bucketName, link.Prefix)
-			// Instead of linking, we're making copies. S3 linking has some issues.
-			// headers := map[string][]string{
-			// 	"x-amz-website-redirect-location": []string{url},
-			// }
-			//err = bucket.PutHeader(name, []byte{}, headers, s3.PublicRead)
-			log.Printf("Copying %s from %s (latest)\n", link.Name, k.Key)
-			_, err = bucket.PutCopy(link.Name, s3.PublicRead, s3.CopyOptions{}, url)
-			if err != nil {
-				return err
-			}
-			break
+func FindPlatform(name string) *Platform {
+	platforms := Platforms()
+	for _, p := range platforms {
+		if p.Name == name {
+			return &p
 		}
 	}
 	return nil
 }
 
-func UpdatePromoteChannel(bucketName string, delay time.Duration, channel string, platform string, env string) (string, error) {
-	client, err := NewClient()
+func (p *Platform) FindRelease(bucket s3.Bucket, f func(r Release) bool) (*Release, error) {
+	resp, err := bucket.List(p.Prefix, "", "", 0)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return client.UpdatePromoteChannel(bucketName, delay, channel, platform, env)
+	releases := loadReleases(resp.Contents, bucket.Name, p.Prefix, p.Suffix, 0)
+	for _, release := range releases {
+		k := release.Key
+		if !strings.HasSuffix(k.Key, p.Suffix) {
+			continue
+		}
+		if f(release) {
+			return &release, nil
+		}
+	}
+	return nil, nil
 }
 
-func (c *Client) UpdatePromoteChannel(bucketName string, delay time.Duration, channel string, platform string, env string) (string, error) {
-	log.Printf("Checking whether to promote build")
+func (c *Client) CopyLatest(bucketName string) error {
 	bucket := c.s3.Bucket(bucketName)
 
-	sourceName := fmt.Sprintf("update-%s-%s-%s.json", platform, env, channel)
-	headers := map[string][]string{}
-	resp, err := bucket.Head(sourceName, headers)
-	if err != nil {
-		return "", err
-	}
+	platforms := Platforms()
 
-	// Looks like "Thu, 10 Mar 2016 01:59:30 GMT"
-	lastModifiedHeader := resp.Header["Last-Modified"]
-	var date string
-	if len(lastModifiedHeader) == 1 {
-		date = lastModifiedHeader[0]
+	for _, platform := range platforms {
+		release, err := platform.FindRelease(*bucket, func(r Release) bool { return true })
+		if err != nil {
+			return err
+		}
+		k := release.Key
+		url := urlString(k, bucketName, platform.Prefix)
+		// Instead of linking, we're making copies. S3 linking has some issues.
+		// headers := map[string][]string{
+		// 	"x-amz-website-redirect-location": []string{url},
+		// }
+		//err = bucket.PutHeader(name, []byte{}, headers, s3.PublicRead)
+		log.Printf("Copying %s from %s (latest)\n", platform.LatestName, k.Key)
+		_, err = bucket.PutCopy(platform.LatestName, s3.PublicRead, s3.CopyOptions{}, url)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Client) CurrentUpdate(bucketName string, platform string, env string) (currentUpdate *keybase1.Update, err error) {
+	bucket := c.s3.Bucket(bucketName)
+
+	data, err := bucket.Get(fmt.Sprintf("update-%s-%s.json", platform, env))
+	if err != nil {
+		return
+	}
+	currentUpdate, err = update.DecodeJSON(data)
+	return
+}
+
+func PromoteRelease(bucketName string, delay time.Duration, channel string, platform string, env string) (*Release, error) {
+	client, err := NewClient()
+	if err != nil {
+		return nil, err
+	}
+	return client.PromoteRelease(bucketName, delay, channel, platform, env)
+}
+
+func updateJSONName(channel string, platformName string, env string) string {
+	if channel == "" {
+		return fmt.Sprintf("update-%s-%s.json", platformName, env)
+	}
+	return fmt.Sprintf("update-%s-%s-%s.json", platformName, env, channel)
+}
+
+func (c *Client) PromoteRelease(bucketName string, delay time.Duration, channel string, platformName string, env string) (*Release, error) {
+	if channel == "" {
+		log.Printf("Finding release to promote (%s delay)", delay)
 	} else {
-		return "", fmt.Errorf("Invalid date in header")
+		log.Printf("Finding release to promote for %s channel (%s delay)", channel, delay)
 	}
-	fileTime, err := time.Parse("Mon, 02 Jan 2006 15:04:05 MST", date)
+	bucket := c.s3.Bucket(bucketName)
+
+	platform := FindPlatform(platformName)
+	if platform == nil {
+		return nil, fmt.Errorf("Unsupported platform")
+	}
+	release, err := platform.FindRelease(*bucket, func(r Release) bool {
+		if time.Since(r.Date) >= delay {
+			return true
+		} else {
+			// log.Printf("Skip release %s (too recent, %s)", r.Name, time.Since(r.Date))
+			return false
+		}
+	})
 	if err != nil {
-		return "", err
-	}
-	fileTime = convertEastern(fileTime)
-	log.Printf("Checking %s, last modified at: %s\n", sourceName, fileTime)
-	if time.Since(fileTime) < delay {
-		log.Printf("Not promoting, was too recent %s < %s\n", time.Since(fileTime), delay)
-		return "", nil
+		return nil, err
 	}
 
-	sourceURL := fmt.Sprintf("https://s3.amazonaws.com/%s/%s", bucketName, sourceName)
-	destName := fmt.Sprintf("update-%s-%s.json", platform, env)
-	_, err = bucket.PutCopy(destName, s3.PublicRead, s3.CopyOptions{}, sourceURL)
-	if err != nil {
-		return "", err
+	if release == nil {
+		return nil, nil
 	}
-	return destName, nil
+	log.Printf("Found release %s (%s), %s", release.Name, time.Since(release.Date), release.Version)
+
+	currentUpdate, err := c.CurrentUpdate(bucketName, platformName, env)
+	if err != nil {
+		return nil, err
+	}
+	if currentUpdate != nil {
+		log.Printf("Found update: %s", currentUpdate.Version)
+		currentVer, err := semver.Make(currentUpdate.Version)
+		if err != nil {
+			return nil, err
+		}
+		releaseVer, err := semver.Make(release.Version)
+		if err != nil {
+			return nil, err
+		}
+
+		if releaseVer.Equals(currentVer) {
+			log.Printf("Release unchanged")
+			return nil, nil
+		} else if releaseVer.LT(currentVer) {
+			log.Printf("Release older than current update")
+			return nil, nil
+		}
+	}
+
+	jsonName := updateJSONName(channel, platformName, env)
+	jsonURL := fmt.Sprintf("https://s3.amazonaws.com/%supdate-%s-%s-%s.json", platform.PrefixSupport, platformName, env, release.Version)
+	log.Printf("Promoting %s", jsonURL)
+	_, err = bucket.PutCopy(jsonName, s3.PublicRead, s3.CopyOptions{}, jsonURL)
+	if err != nil {
+		return nil, err
+	}
+	return release, nil
 }

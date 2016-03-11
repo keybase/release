@@ -18,7 +18,7 @@ import (
 	releaseVersion "github.com/keybase/release/version"
 )
 
-func JSON(version string, name string, src string, URI *url.URL, signature string) ([]byte, error) {
+func EncodeJSON(version string, name string, src string, URI *url.URL, signature string) ([]byte, error) {
 	update := keybase1.Update{
 		Version: version,
 		Name:    name,
@@ -69,6 +69,14 @@ func JSON(version string, name string, src string, URI *url.URL, signature strin
 	}
 
 	return json.MarshalIndent(update, "", "  ")
+}
+
+func DecodeJSON(b []byte) (*keybase1.Update, error) {
+	var obj keybase1.Update
+	if err := json.Unmarshal(b, &obj); err != nil {
+		return nil, err
+	}
+	return &obj, nil
 }
 
 func readFile(path string) (string, error) {

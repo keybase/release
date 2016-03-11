@@ -13,6 +13,15 @@ import (
 	"github.com/blang/semver"
 )
 
+func Find(name string) string {
+	start := strings.IndexAny(name, "123456789")
+	if start == -1 {
+		return ""
+	}
+	name = name[start:len(name)]
+	return removeExt(name)
+}
+
 func Parse(name string) (version string, t time.Time, commit string, err error) {
 	if strings.HasSuffix(name, ".deb") || strings.HasSuffix(name, ".rpm") {
 		return ParseLinux(name)
@@ -20,17 +29,14 @@ func Parse(name string) (version string, t time.Time, commit string, err error) 
 
 	t = time.Unix(0, 0)
 
-	start := strings.IndexAny(name, "123456789")
-	if start == -1 {
+	version = Find(name)
+	if version == "" {
 		return
 	}
-	name = name[start:len(name)]
-	verstr := removeExt(name)
-	sversion, err := semver.Make(verstr)
+	sversion, err := semver.Make(version)
 	if err != nil {
 		return
 	}
-	version = fmt.Sprintf("%d.%d.%d", sversion.Major, sversion.Minor, sversion.Patch)
 
 	if len(sversion.Pre) != 1 {
 		err = fmt.Errorf("Invalid prerelease")

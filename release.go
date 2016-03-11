@@ -9,6 +9,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	gh "github.com/keybase/release/github"
 	"github.com/keybase/release/s3"
@@ -75,9 +76,9 @@ var (
 	parseVersionCmd    = app.Command("version-parse", "Parse a sematic version string")
 	parseVersionString = parseVersionCmd.Arg("version", "Semantic version to parse").Required().String()
 
-	promoteTestBuildsCmd        = app.Command("promote-test-builds", "Promote test build")
-	promoteTestBuildsBucketName = promoteTestBuildsCmd.Flag("bucket-name", "Bucket name to use").Required().String()
-	promoteTestBuildsDelayHours = promoteTestBuildsCmd.Flag("delay", "Only promote if older than this (e.g. 24h)").Default("1m").Duration()
+	promoteReleasesCmd        = app.Command("promote-releases", "Promote releases")
+	promoteReleasesBucketName = promoteReleasesCmd.Flag("bucket-name", "Bucket name to use").Required().String()
+	promoteReleasesDelayHours = promoteReleasesCmd.Flag("delay", "Only promote if older than this (e.g. 24h)").Default("1m").Duration()
 )
 
 func main() {
@@ -128,7 +129,7 @@ func main() {
 			log.Fatal(err)
 		}
 	case updateJSONCmd.FullCommand():
-		out, err := update.JSON(*updateJSONVersion, tag(*updateJSONVersion), *updateJSONSrc, *updateJSONURI, *updateJSONSignature)
+		out, err := update.EncodeJSON(*updateJSONVersion, tag(*updateJSONVersion), *updateJSONSrc, *updateJSONURI, *updateJSONSignature)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -151,13 +152,17 @@ func main() {
 		log.Printf("%s\n", ver)
 		log.Printf("%s\n", date)
 		log.Printf("%s\n", commit)
-	case promoteTestBuildsCmd.FullCommand():
-		promoted, err := s3.UpdatePromoteChannel(*promoteTestBuildsBucketName, *promoteTestBuildsDelayHours, "test", "darwin", "prod")
+	case promoteReleasesCmd.FullCommand():
+		release, err := s3.PromoteRelease(*promoteReleasesBucketName, time.Duration(0), "test", "darwin", "prod")
 		if err != nil {
 			log.Fatal(err)
 		}
-		if promoted != "" {
-			log.Printf("Promoted build: %s\n", promoted)
+		release, err = s3.PromoteRelease(*promoteReleasesBucketName, *promoteReleasesDelayHours, "", "darwin", "prod")
+		if err != nil {
+			log.Fatal(err)
+		}
+		if release != nil {
+			log.Printf("Promoted release: %s\n", release)
 		}
 	}
 }
