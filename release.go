@@ -78,7 +78,6 @@ var (
 
 	promoteReleasesCmd        = app.Command("promote-releases", "Promote releases")
 	promoteReleasesBucketName = promoteReleasesCmd.Flag("bucket-name", "Bucket name to use").Required().String()
-	promoteReleasesDelayHours = promoteReleasesCmd.Flag("delay", "Only promote if older than this (e.g. 24h)").Default("1m").Duration()
 )
 
 func main() {
@@ -153,11 +152,11 @@ func main() {
 		log.Printf("%s\n", date)
 		log.Printf("%s\n", commit)
 	case promoteReleasesCmd.FullCommand():
-		release, err := s3.PromoteRelease(*promoteReleasesBucketName, time.Duration(0), "test", "darwin", "prod")
+		release, err := s3.PromoteRelease(*promoteReleasesBucketName, time.Duration(0), 25, "test", "darwin", "prod")
 		if err != nil {
 			log.Fatal(err)
 		}
-		release, err = s3.PromoteRelease(*promoteReleasesBucketName, *promoteReleasesDelayHours, "", "darwin", "prod")
+		release, err = s3.PromoteRelease(*promoteReleasesBucketName, time.Hour*27, 9, "", "darwin", "prod")
 		if err != nil {
 			log.Fatal(err)
 		}

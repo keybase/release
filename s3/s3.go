@@ -250,6 +250,9 @@ func (c *Client) CopyLatest(bucketName string) error {
 		if err != nil {
 			return err
 		}
+		if release == nil {
+			continue
+		}
 		k := release.Key
 		url := urlString(k, bucketName, platform.Prefix)
 		// Instead of linking, we're making copies. S3 linking has some issues.
@@ -277,12 +280,12 @@ func (c *Client) CurrentUpdate(bucketName string, platform string, env string) (
 	return
 }
 
-func PromoteRelease(bucketName string, delay time.Duration, channel string, platform string, env string) (*Release, error) {
+func PromoteRelease(bucketName string, delay time.Duration, hourEastern int, channel string, platform string, env string) (*Release, error) {
 	client, err := NewClient()
 	if err != nil {
 		return nil, err
 	}
-	return client.PromoteRelease(bucketName, delay, channel, platform, env)
+	return client.PromoteRelease(bucketName, delay, hourEastern, channel, platform, env)
 }
 
 func updateJSONName(channel string, platformName string, env string) string {
@@ -292,7 +295,7 @@ func updateJSONName(channel string, platformName string, env string) string {
 	return fmt.Sprintf("update-%s-%s-%s.json", platformName, env, channel)
 }
 
-func (c *Client) PromoteRelease(bucketName string, delay time.Duration, channel string, platformName string, env string) (*Release, error) {
+func (c *Client) PromoteRelease(bucketName string, delay time.Duration, hourEastern int, channel string, platformName string, env string) (*Release, error) {
 	if channel == "" {
 		log.Printf("Finding release to promote (%s delay)", delay)
 	} else {
@@ -305,12 +308,8 @@ func (c *Client) PromoteRelease(bucketName string, delay time.Duration, channel 
 		return nil, fmt.Errorf("Unsupported platform")
 	}
 	release, err := platform.FindRelease(*bucket, func(r Release) bool {
-		if time.Since(r.Date) >= delay {
-			return true
-		} else {
-			// log.Printf("Skip release %s (too recent, %s)", r.Name, time.Since(r.Date))
-			return false
-		}
+		hour, min, _ := r.Date.Clock()
+		return (time.Since(r.Date) >= delay && hour < hourEastern && min < 15)
 	})
 	if err != nil {
 		return nil, err
