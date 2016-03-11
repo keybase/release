@@ -9,6 +9,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	gh "github.com/keybase/release/github"
 	"github.com/keybase/release/s3"
@@ -74,6 +75,9 @@ var (
 
 	parseVersionCmd    = app.Command("version-parse", "Parse a sematic version string")
 	parseVersionString = parseVersionCmd.Arg("version", "Semantic version to parse").Required().String()
+
+	promoteReleasesCmd        = app.Command("promote-releases", "Promote releases")
+	promoteReleasesBucketName = promoteReleasesCmd.Flag("bucket-name", "Bucket name to use").Required().String()
 )
 
 func main() {
@@ -124,7 +128,7 @@ func main() {
 			log.Fatal(err)
 		}
 	case updateJSONCmd.FullCommand():
-		out, err := update.JSON(*updateJSONVersion, tag(*updateJSONVersion), *updateJSONSrc, *updateJSONURI, *updateJSONSignature)
+		out, err := update.EncodeJSON(*updateJSONVersion, tag(*updateJSONVersion), *updateJSONSrc, *updateJSONURI, *updateJSONSignature)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -144,8 +148,20 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf("%s\n", ver)
-		fmt.Printf("%s\n", date)
-		fmt.Printf("%s\n", commit)
+		log.Printf("%s\n", ver)
+		log.Printf("%s\n", date)
+		log.Printf("%s\n", commit)
+	case promoteReleasesCmd.FullCommand():
+		release, err := s3.PromoteRelease(*promoteReleasesBucketName, time.Duration(0), 25, "test", "darwin", "prod")
+		if err != nil {
+			log.Fatal(err)
+		}
+		release, err = s3.PromoteRelease(*promoteReleasesBucketName, time.Hour*27, 9, "", "darwin", "prod")
+		if err != nil {
+			log.Fatal(err)
+		}
+		if release != nil {
+			log.Printf("Promoted release: %s\n", release)
+		}
 	}
 }
