@@ -323,10 +323,8 @@ func (c *Client) PromoteRelease(bucketName string, delay time.Duration, hourEast
 	}
 	log.Printf("Found release %s (%s), %s", release.Name, time.Since(release.Date), release.Version)
 
-	currentUpdate, err := c.CurrentUpdate(bucketName, platformName, env)
-	if err != nil {
-		return nil, err
-	}
+	// Get current update (ok to ignore error since it might have been pulled)
+	currentUpdate, _ := c.CurrentUpdate(bucketName, platformName, env)
 	if currentUpdate != nil {
 		log.Printf("Found update: %s", currentUpdate.Version)
 		currentVer, err := semver.Make(currentUpdate.Version)
