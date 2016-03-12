@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -77,9 +76,7 @@ func loadReleases(keys []s3.Key, bucketName string, prefix string, suffix string
 	var releases []Release
 	for _, k := range keys {
 		if strings.HasSuffix(k.Key, suffix) {
-			key := k.Key
-			name := key[len(prefix):]
-			urlString := fmt.Sprintf("https://s3.amazonaws.com/%s/%s%s", bucketName, prefix, url.QueryEscape(name))
+			urlString, name := urlStringForKey(k, bucketName, prefix)
 			version, date, commit, err := version.Parse(name)
 			if err != nil {
 				log.Printf("Couldn't get version from name: %s\n", name)
@@ -254,7 +251,7 @@ func (c *Client) CopyLatest(bucketName string) error {
 			continue
 		}
 		k := release.Key
-		url := urlString(k, bucketName, platform.Prefix)
+		url, _ := urlStringForKey(k, bucketName, platform.Prefix)
 		// Instead of linking, we're making copies. S3 linking has some issues.
 		// headers := map[string][]string{
 		// 	"x-amz-website-redirect-location": []string{url},
@@ -308,8 +305,14 @@ func (c *Client) PromoteRelease(bucketName string, delay time.Duration, hourEast
 		return nil, fmt.Errorf("Unsupported platform")
 	}
 	release, err := platform.FindRelease(*bucket, func(r Release) bool {
+		if delay != 0 && time.Since(r.Date) < delay {
+			return false
+		}
 		hour, min, _ := r.Date.Clock()
-		return (time.Since(r.Date) >= delay && hour < hourEastern && min < 15)
+		if hourEastern != 0 && hour < hourEastern && min < 15 {
+			return false
+		}
+		return true
 	})
 	if err != nil {
 		return nil, err
@@ -345,7 +348,7 @@ func (c *Client) PromoteRelease(bucketName string, delay time.Duration, hourEast
 	}
 
 	jsonName := updateJSONName(channel, platformName, env)
-	jsonURL := fmt.Sprintf("https://s3.amazonaws.com/%supdate-%s-%s-%s.json", platform.PrefixSupport, platformName, env, release.Version)
+	jsonURL := urlString(bucketName, platform.PrefixSupport, fmt.Sprintf("update-%s-%s-%s.json", platformName, env, release.Version))
 	log.Printf("Promoting %s", jsonURL)
 	_, err = bucket.PutCopy(jsonName, s3.PublicRead, s3.CopyOptions{}, jsonURL)
 	if err != nil {

@@ -152,7 +152,7 @@ func main() {
 		log.Printf("%s\n", date)
 		log.Printf("%s\n", commit)
 	case promoteReleasesCmd.FullCommand():
-		release, err := s3.PromoteRelease(*promoteReleasesBucketName, time.Duration(0), 25, "test", "darwin", "prod")
+		release, err := s3.PromoteRelease(*promoteReleasesBucketName, time.Duration(0), 0, "test", "darwin", "prod")
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -161,7 +161,7 @@ func main() {
 		// 	log.Fatal(err)
 		// }
 		if release != nil {
-			log.Printf("Promoted release: %s\n", release)
+			log.Printf("Promoted release: %s\n", release.Name)
 		}
 	}
 }

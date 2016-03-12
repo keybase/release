@@ -12,9 +12,13 @@ import (
 	"github.com/goamz/goamz/s3"
 )
 
-func urlString(k s3.Key, bucketName string, prefix string) string {
+func urlStringForKey(k s3.Key, bucketName string, prefix string) (string, string) {
 	key := k.Key
 	name := key[len(prefix):]
+	return fmt.Sprintf("https://s3.amazonaws.com/%s/%s%s", bucketName, prefix, url.QueryEscape(name)), name
+}
+
+func urlString(bucketName string, prefix string, name string) string {
 	return fmt.Sprintf("https://s3.amazonaws.com/%s/%s%s", bucketName, prefix, url.QueryEscape(name))
 }
 
