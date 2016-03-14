@@ -156,7 +156,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		release, err = s3.PromoteRelease(*promoteReleasesBucketName, time.Hour*27, 9, "", "darwin", "prod")
+		release, err = s3.PromoteRelease(*promoteReleasesBucketName, time.Hour*27, 10, "", "darwin", "prod")
 		if err != nil {
 			log.Fatal(err)
 		}

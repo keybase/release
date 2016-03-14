@@ -291,9 +291,9 @@ func updateJSONName(channel string, platformName string, env string) string {
 	return fmt.Sprintf("update-%s-%s-%s.json", platformName, env, channel)
 }
 
-func (c *Client) PromoteRelease(bucketName string, delay time.Duration, hourEastern int, channel string, platformName string, env string) (*Release, error) {
+func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHourEastern int, channel string, platformName string, env string) (*Release, error) {
 	if channel == "" {
-		log.Printf("Finding release to promote (%s delay)", delay)
+		log.Printf("Finding release to promote for public (%s delay, < %dam)", delay, beforeHourEastern)
 	} else {
 		log.Printf("Finding release to promote for %s channel (%s delay)", channel, delay)
 	}
@@ -307,8 +307,8 @@ func (c *Client) PromoteRelease(bucketName string, delay time.Duration, hourEast
 		if delay != 0 && time.Since(r.Date) < delay {
 			return false
 		}
-		hour, min, _ := r.Date.Clock()
-		if hourEastern != 0 && hour < hourEastern && min < 15 {
+		hour, _, _ := r.Date.Clock()
+		if beforeHourEastern != 0 && hour >= beforeHourEastern {
 			return false
 		}
 		return true
@@ -324,7 +324,7 @@ func (c *Client) PromoteRelease(bucketName string, delay time.Duration, hourEast
 
 	jsonName := updateJSONName(channel, platformName, env)
 	jsonURL := urlString(bucketName, platform.PrefixSupport, fmt.Sprintf("update-%s-%s-%s.json", platformName, env, release.Version))
-	log.Printf("Promoting %s", jsonURL)
+	log.Printf("Promoting %s to %s", jsonURL, jsonName)
 	_, err = bucket.PutCopy(jsonName, s3.PublicRead, s3.CopyOptions{}, jsonURL)
 	if err != nil {
 		return nil, err
