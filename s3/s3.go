@@ -257,7 +257,8 @@ func (c *Client) CopyLatest(bucketName string) error {
 		// 	"x-amz-website-redirect-location": []string{url},
 		// }
 		//err = bucket.PutHeader(name, []byte{}, headers, s3.PublicRead)
-		_, err = PutCopy(bucket, platform.LatestName, url)
+		//_, err = bucket.PutCopy(platform.LatestName, s3.PublicRead, s3.CopyOptions{}, url)
+		_, err = putCopy(bucket, platform.LatestName, url)
 		if err != nil {
 			return err
 		}
@@ -349,14 +350,16 @@ func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHo
 
 	jsonName := updateJSONName(channel, platformName, env)
 	jsonURL := urlString(bucketName, platform.PrefixSupport, fmt.Sprintf("update-%s-%s-%s.json", platformName, env, release.Version))
-	_, err = PutCopy(bucket, jsonName, jsonURL)
+	//_, err = bucket.PutCopy(jsonName, s3.PublicRead, s3.CopyOptions{}, jsonURL)
+	_, err = putCopy(bucket, jsonName, jsonURL)
 	if err != nil {
 		return nil, err
 	}
 	return release, nil
 }
 
-func PutCopy(b *s3.Bucket, destPath string, sourceURL string) (res *s3.CopyObjectResult, err error) {
+// Temporary until amz/go PR is live
+func putCopy(b *s3.Bucket, destPath string, sourceURL string) (res *s3.CopyObjectResult, err error) {
 	for attempt := b.S3.AttemptStrategy.Start(); attempt.Next(); {
 		log.Printf("PutCopying %s to %s\n", sourceURL, destPath)
 		res, err = b.PutCopy(destPath, s3.PublicRead, s3.CopyOptions{}, sourceURL)
