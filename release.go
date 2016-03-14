@@ -156,10 +156,10 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		// release, err = s3.PromoteRelease(*promoteReleasesBucketName, time.Hour*27, 9, "", "darwin", "prod")
-		// if err != nil {
-		// 	log.Fatal(err)
-		// }
+		release, err = s3.PromoteRelease(*promoteReleasesBucketName, time.Hour*27, 9, "", "darwin", "prod")
+		if err != nil {
+			log.Fatal(err)
+		}
 		if release != nil {
 			log.Printf("Promoted release: %s\n", release.Name)
 		}
