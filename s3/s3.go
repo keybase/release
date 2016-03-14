@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/alecthomas/template"
+	"github.com/blang/semver"
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/s3"
 	keybase1 "github.com/keybase/client/go/protocol"
@@ -265,10 +266,10 @@ func (c *Client) CopyLatest(bucketName string) error {
 	return nil
 }
 
-func (c *Client) CurrentUpdate(bucketName string, platform string, env string) (currentUpdate *keybase1.Update, err error) {
+func (c *Client) CurrentUpdate(bucketName string, channel string, platformName string, env string) (currentUpdate *keybase1.Update, err error) {
 	bucket := c.s3.Bucket(bucketName)
 
-	data, err := bucket.Get(fmt.Sprintf("update-%s-%s.json", platform, env))
+	data, err := bucket.Get(updateJSONName(channel, platformName, env))
 	if err != nil {
 		return
 	}
@@ -318,9 +319,34 @@ func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHo
 	}
 
 	if release == nil {
+		log.Printf("No matching release found")
 		return nil, nil
 	}
 	log.Printf("Found release %s (%s), %s", release.Name, time.Since(release.Date), release.Version)
+
+	currentUpdate, err := c.CurrentUpdate(bucketName, channel, platformName, env)
+	if err != nil {
+		log.Printf("Error looking for current update: %s", err)
+	}
+	if currentUpdate != nil {
+		log.Printf("Found update: %s", currentUpdate.Version)
+		currentVer, err := semver.Make(currentUpdate.Version)
+		if err != nil {
+			return nil, err
+		}
+		releaseVer, err := semver.Make(release.Version)
+		if err != nil {
+			return nil, err
+		}
+
+		if releaseVer.Equals(currentVer) {
+			log.Printf("Release unchanged")
+			return nil, nil
+		} else if releaseVer.LT(currentVer) {
+			log.Printf("Release older than current update")
+			return nil, nil
+		}
+	}
 
 	jsonName := updateJSONName(channel, platformName, env)
 	jsonURL := urlString(bucketName, platform.PrefixSupport, fmt.Sprintf("update-%s-%s-%s.json", platformName, env, release.Version))
