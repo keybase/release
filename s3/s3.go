@@ -384,7 +384,7 @@ func CopyUpdateJSON(bucketName string, channel string, platformName string, env 
 
 // Temporary until amz/go PR is live
 func putCopy(b *s3.Bucket, destPath string, sourceURL string) (res *s3.CopyObjectResult, err error) {
-	for attempt := b.S3.AttemptStrategy.Start(); attempt.Next(); {
+	for i := 0; i < 3; i++ {
 		log.Printf("PutCopying %s to %s\n", sourceURL, destPath)
 		res, err = b.PutCopy(destPath, s3.PublicRead, s3.CopyOptions{}, sourceURL)
 		if err == nil {
