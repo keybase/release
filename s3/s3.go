@@ -296,6 +296,7 @@ func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHo
 		return nil, fmt.Errorf("Unsupported platform")
 	}
 	release, err := platform.FindRelease(*bucket, func(r Release) bool {
+		log.Printf("Checking release date %s", r.Date)
 		if delay != 0 && time.Since(r.Date) < delay {
 			return false
 		}
