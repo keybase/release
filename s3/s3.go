@@ -238,27 +238,18 @@ func (p *Platform) FindRelease(bucket s3.Bucket, f func(r Release) bool) (*Relea
 }
 
 func (c *Client) CopyLatest(bucketName string) error {
-	bucket := c.s3.Bucket(bucketName)
-
 	platforms := Platforms()
-
 	for _, platform := range platforms {
-		release, err := platform.FindRelease(*bucket, func(r Release) bool { return true })
-		if err != nil {
-			return err
-		}
-		if release == nil {
+		currentUpdate, path, err := c.CurrentUpdate(bucketName, "", platform.Name, "prod")
+		if err != nil || currentUpdate == nil {
+			log.Printf("%s No latest for %s at %s", err, platform.Name, path)
 			continue
 		}
-		k := release.Key
-		url, _ := urlStringForKey(k, bucketName, platform.Prefix)
+
+		bucket := c.s3.Bucket(bucketName)
 		// Instead of linking, we're making copies. S3 linking has some issues.
-		// headers := map[string][]string{
-		// 	"x-amz-website-redirect-location": []string{url},
-		// }
-		//err = bucket.PutHeader(name, []byte{}, headers, s3.PublicRead)
 		//_, err = bucket.PutCopy(platform.LatestName, s3.PublicRead, s3.CopyOptions{}, url)
-		_, err = putCopy(bucket, platform.LatestName, url)
+		_, err = putCopy(bucket, platform.LatestName, currentUpdate.Asset.Url)
 		if err != nil {
 			return err
 		}
@@ -266,10 +257,10 @@ func (c *Client) CopyLatest(bucketName string) error {
 	return nil
 }
 
-func (c *Client) CurrentUpdate(bucketName string, channel string, platformName string, env string) (currentUpdate *keybase1.Update, err error) {
+func (c *Client) CurrentUpdate(bucketName string, channel string, platformName string, env string) (currentUpdate *keybase1.Update, path string, err error) {
 	bucket := c.s3.Bucket(bucketName)
-
-	data, err := bucket.Get(updateJSONName(channel, platformName, env))
+	path = updateJSONName(channel, platformName, env)
+	data, err := bucket.Get(path)
 	if err != nil {
 		return
 	}
@@ -324,9 +315,9 @@ func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHo
 	}
 	log.Printf("Found release %s (%s), %s", release.Name, time.Since(release.Date), release.Version)
 
-	currentUpdate, err := c.CurrentUpdate(bucketName, channel, platformName, env)
+	currentUpdate, _, err := c.CurrentUpdate(bucketName, channel, platformName, env)
 	if err != nil {
-		log.Printf("Error looking for current update: %s", err)
+		log.Printf("Error looking for current update: %s (%s)", err, platformName)
 	}
 	if currentUpdate != nil {
 		log.Printf("Found update: %s", currentUpdate.Version)
