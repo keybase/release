@@ -1,15 +1,17 @@
 // Copyright 2015 Keybase, Inc. All rights reserved. Use of
 // this source code is governed by the included BSD license.
 
-package s3
+package update
 
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"sort"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	"github.com/alecthomas/template"
@@ -17,7 +19,6 @@ import (
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/s3"
 	keybase1 "github.com/keybase/client/go/protocol"
-	"github.com/keybase/release/update"
 	"github.com/keybase/release/version"
 )
 
@@ -284,7 +285,7 @@ func (c *Client) CurrentUpdate(bucketName string, channel string, platformName s
 	if err != nil {
 		return
 	}
-	currentUpdate, err = update.DecodeJSON(data)
+	currentUpdate, err = DecodeJSON(data)
 	return
 }
 
@@ -305,7 +306,7 @@ func updateJSONName(channel string, platformName string, env string) string {
 
 func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHourEastern int, channel string, platformName string, env string) (*Release, error) {
 	if channel == "" {
-		log.Printf("Finding release to promote for public (%s delay, < %dam)", delay, beforeHourEastern)
+		log.Printf("Finding release to promote (%s delay, < %dam)", delay, beforeHourEastern)
 	} else {
 		log.Printf("Finding release to promote for %s channel (%s delay)", channel, delay)
 	}
@@ -392,4 +393,41 @@ func putCopy(b *s3.Bucket, destPath string, sourceURL string) (res *s3.CopyObjec
 		}
 	}
 	return
+}
+
+func (c *Client) report(tw *tabwriter.Writer, bucketName string, channel string, platformName string) {
+	update, _, err := c.CurrentUpdate(bucketName, channel, platformName, "prod")
+	if channel == "" {
+		channel = "public"
+	}
+	fmt.Fprintf(tw, fmt.Sprintf("%s\t%s\t", platformName, channel))
+	if err != nil {
+		fmt.Fprintln(tw, "Error")
+	} else if update != nil {
+		published := ""
+		if update.PublishedAt != nil {
+			published = keybase1.FromTime(*update.PublishedAt).Format(time.UnixDate)
+		}
+		fmt.Fprintf(tw, "%s\t%s\n", update.Version, published)
+	} else {
+		fmt.Fprintln(tw, "None")
+	}
+}
+
+func Report(bucketName string, writer io.Writer) error {
+	client, err := NewClient()
+	if err != nil {
+		return err
+	}
+
+	tw := tabwriter.NewWriter(writer, 5, 0, 3, ' ', 0)
+	fmt.Fprintln(tw, "Platform\tType\tVersion\tPublished")
+	client.report(tw, bucketName, "test", "darwin")
+	client.report(tw, bucketName, "", "darwin")
+	client.report(tw, bucketName, "test", "linux")
+	client.report(tw, bucketName, "", "linux")
+	client.report(tw, bucketName, "test", "windows")
+	client.report(tw, bucketName, "", "windows")
+	tw.Flush()
+	return nil
 }

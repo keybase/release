@@ -12,7 +12,6 @@ import (
 	"time"
 
 	gh "github.com/keybase/release/github"
-	"github.com/keybase/release/s3"
 	"github.com/keybase/release/update"
 	"github.com/keybase/release/version"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -78,6 +77,12 @@ var (
 
 	promoteReleasesCmd        = app.Command("promote-releases", "Promote releases")
 	promoteReleasesBucketName = promoteReleasesCmd.Flag("bucket-name", "Bucket name to use").Required().String()
+
+	promoteTestReleasesCmd        = app.Command("promote-test-releases", "Promote test releases")
+	promoteTestReleasesBucketName = promoteTestReleasesCmd.Flag("bucket-name", "Bucket name to use").Required().String()
+
+	updatesReportCmd        = app.Command("updates-report", "Summary of updates/releases")
+	updatesReportBucketName = updatesReportCmd.Flag("bucket-name", "Bucket name to use").Required().String()
 )
 
 func main() {
@@ -134,12 +139,12 @@ func main() {
 		}
 		fmt.Fprintf(os.Stdout, "%s\n", out)
 	case indexHTMLCmd.FullCommand():
-		err := s3.WriteHTML(*indexHTMLDest, *indexHTMLBucketName, *indexHTMLPrefixes, *indexHTMLSuffix)
+		err := update.WriteHTML(*indexHTMLDest, *indexHTMLBucketName, *indexHTMLPrefixes, *indexHTMLSuffix)
 		if err != nil {
 			log.Fatal(err)
 		}
 	case latestCmd.FullCommand():
-		err := s3.CopyLatest(*latestBucketName)
+		err := update.CopyLatest(*latestBucketName)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -152,25 +157,31 @@ func main() {
 		log.Printf("%s\n", date)
 		log.Printf("%s\n", commit)
 	case promoteReleasesCmd.FullCommand():
-		_, err := s3.PromoteRelease(*promoteReleasesBucketName, time.Duration(0), 0, "test", "darwin", "prod")
-		if err != nil {
-			log.Fatal(err)
-		}
-		release, err := s3.PromoteRelease(*promoteReleasesBucketName, time.Hour*27, 10, "", "darwin", "prod")
+		release, err := update.PromoteRelease(*promoteReleasesBucketName, time.Hour*27, 10, "", "darwin", "prod")
 		if err != nil {
 			log.Fatal(err)
 		}
 		if release != nil {
 			log.Printf("Promoted (darwin) release: %s\n", release.Name)
 		}
-
-		// Copy regular json to test channel for linux and windows until we implement
-		// delayed updates.
-		err = s3.CopyUpdateJSON(*promoteReleasesBucketName, "test", "linux", "prod")
+	case promoteTestReleasesCmd.FullCommand():
+		// Use latest release for update test json
+		_, err := update.PromoteRelease(*promoteTestReleasesBucketName, time.Duration(0), 0, "test", "darwin", "prod")
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = s3.CopyUpdateJSON(*promoteReleasesBucketName, "test", "windows", "prod")
+		// Copy update json to test channel for linux and windows until we implement
+		// delayed updates.
+		err = update.CopyUpdateJSON(*promoteTestReleasesBucketName, "test", "linux", "prod")
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = update.CopyUpdateJSON(*promoteTestReleasesBucketName, "test", "windows", "prod")
+		if err != nil {
+			log.Fatal(err)
+		}
+	case updatesReportCmd.FullCommand():
+		err := update.Report(*updatesReportBucketName, os.Stdout)
 		if err != nil {
 			log.Fatal(err)
 		}
