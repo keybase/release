@@ -152,17 +152,27 @@ func main() {
 		log.Printf("%s\n", date)
 		log.Printf("%s\n", commit)
 	case promoteReleasesCmd.FullCommand():
-		release, err := s3.PromoteRelease(*promoteReleasesBucketName, time.Duration(0), 0, "test", "darwin", "prod")
+		_, err := s3.PromoteRelease(*promoteReleasesBucketName, time.Duration(0), 0, "test", "darwin", "prod")
 		if err != nil {
 			log.Fatal(err)
 		}
-		// TODO: Change hour to 10 after tomorrow
-		release, err = s3.PromoteRelease(*promoteReleasesBucketName, time.Hour*27, 13, "", "darwin", "prod")
+		release, err := s3.PromoteRelease(*promoteReleasesBucketName, time.Hour*27, 10, "", "darwin", "prod")
 		if err != nil {
 			log.Fatal(err)
 		}
 		if release != nil {
-			log.Printf("Promoted release: %s\n", release.Name)
+			log.Printf("Promoted (darwin) release: %s\n", release.Name)
+		}
+
+		// Copy regular json to test channel for linux and windows until we implement
+		// delayed updates.
+		err = s3.CopyUpdateJSON(*promoteReleasesBucketName, "test", "linux", "prod")
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = s3.CopyUpdateJSON(*promoteReleasesBucketName, "test", "windows", "prod")
+		if err != nil {
+			log.Fatal(err)
 		}
 	}
 }

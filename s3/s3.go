@@ -370,6 +370,18 @@ func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHo
 	return release, nil
 }
 
+func CopyUpdateJSON(bucketName string, channel string, platformName string, env string) error {
+	client, err := NewClient()
+	if err != nil {
+		return err
+	}
+	jsonNameDest := updateJSONName(channel, platformName, env)
+	jsonURLSource := urlString(bucketName, "", updateJSONName("", platformName, env))
+	bucket := client.s3.Bucket(bucketName)
+	_, err = putCopy(bucket, jsonNameDest, jsonURLSource)
+	return err
+}
+
 // Temporary until amz/go PR is live
 func putCopy(b *s3.Bucket, destPath string, sourceURL string) (res *s3.CopyObjectResult, err error) {
 	for attempt := b.S3.AttemptStrategy.Start(); attempt.Next(); {

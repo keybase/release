@@ -19,6 +19,9 @@ func urlStringForKey(k s3.Key, bucketName string, prefix string) (string, string
 }
 
 func urlString(bucketName string, prefix string, name string) string {
+	if prefix == "" {
+		return fmt.Sprintf("https://s3.amazonaws.com/%s/%s%s", bucketName, url.QueryEscape(name))
+	}
 	return fmt.Sprintf("https://s3.amazonaws.com/%s/%s%s", bucketName, prefix, url.QueryEscape(name))
 }
 
