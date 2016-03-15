@@ -240,21 +240,41 @@ func (p *Platform) FindRelease(bucket s3.Bucket, f func(r Release) bool) (*Relea
 func (c *Client) CopyLatest(bucketName string) error {
 	platforms := Platforms()
 	for _, platform := range platforms {
-		currentUpdate, path, err := c.CurrentUpdate(bucketName, "", platform.Name, "prod")
-		if err != nil || currentUpdate == nil {
-			log.Printf("%s No latest for %s at %s", err, platform.Name, path)
+		release, url, err := c.copyFromReleases(platform, bucketName)
+		if err != nil {
+			return err
+		}
+		if release == nil {
 			continue
 		}
-
+		if url == "" {
+			continue
+		}
 		bucket := c.s3.Bucket(bucketName)
-		// Instead of linking, we're making copies. S3 linking has some issues.
-		//_, err = bucket.PutCopy(platform.LatestName, s3.PublicRead, s3.CopyOptions{}, url)
-		_, err = putCopy(bucket, platform.LatestName, currentUpdate.Asset.Url)
+		_, err = putCopy(bucket, platform.LatestName, url)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (c *Client) copyFromUpdate(platform Platform, bucketName string) (url string, err error) {
+	currentUpdate, path, err := c.CurrentUpdate(bucketName, "", platform.Name, "prod")
+	if err != nil || currentUpdate == nil {
+		return "", fmt.Errorf("%s No latest for %s at %s", err, platform.Name, path)
+	}
+	return currentUpdate.Asset.Url, err
+}
+
+func (c *Client) copyFromReleases(platform Platform, bucketName string) (release *Release, url string, err error) {
+	bucket := c.s3.Bucket(bucketName)
+	release, err = platform.FindRelease(*bucket, func(r Release) bool { return true })
+	if err != nil || release == nil {
+		return
+	}
+	url, _ = urlStringForKey(release.Key, bucketName, platform.Prefix)
+	return
 }
 
 func (c *Client) CurrentUpdate(bucketName string, channel string, platformName string, env string) (currentUpdate *keybase1.Update, path string, err error) {
