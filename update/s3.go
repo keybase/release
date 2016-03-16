@@ -493,9 +493,11 @@ func PromoteReleases(bucketName string, platform string) error {
 	case "darwin":
 		return PromoteReleaseForDarwin(bucketName)
 	case "linux":
-		return fmt.Errorf("Unsupported")
+		log.Printf("Promoting releases is unsupported for linux")
+		return nil
 	case "windows":
-		return fmt.Errorf("Unsupported")
+		log.Printf("Promoting releases is unsupported for windows")
+		return nil
 	case "":
 		return PromoteReleaseForDarwin(bucketName)
 	default:
