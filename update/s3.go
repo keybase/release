@@ -104,7 +104,7 @@ func loadReleases(keys []s3.Key, bucketName string, prefix string, suffix string
 	return releases
 }
 
-func WriteHTML(path string, bucketName string, prefixes string, suffix string) error {
+func WriteHTML(bucketName string, prefixes string, suffix string, outPath string, uploadDest string) error {
 	client, err := NewClient()
 	if err != nil {
 		return err
@@ -134,7 +134,36 @@ func WriteHTML(path string, bucketName string, prefixes string, suffix string) e
 		})
 	}
 
-	return WriteHTMLForLinks(path, bucketName, sections)
+	var buf bytes.Buffer
+	err = WriteHTMLForLinks(bucketName, sections, &buf)
+	if err != nil {
+		return err
+	}
+	if outPath != "" {
+		err = makeParentDirs(outPath)
+		if err != nil {
+			return err
+		}
+		err = ioutil.WriteFile(outPath, buf.Bytes(), 0644)
+		if err != nil {
+			return err
+		}
+	}
+
+	if uploadDest != "" {
+		client, err := NewClient()
+		if err != nil {
+			return err
+		}
+		bucket = client.s3.Bucket(bucketName)
+		log.Printf("Uploading to %s", urlString(bucketName, "", uploadDest))
+		err = bucket.Put(uploadDest, buf.Bytes(), "application/html", s3.PublicRead, s3.Options{})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 var htmlTemplate = `
@@ -159,7 +188,7 @@ var htmlTemplate = `
 </html>
 `
 
-func WriteHTMLForLinks(path string, title string, sections []Section) error {
+func WriteHTMLForLinks(title string, sections []Section, writer io.Writer) error {
 	vars := map[string]interface{}{
 		"Title":    title,
 		"Sections": sections,
@@ -170,19 +199,7 @@ func WriteHTMLForLinks(path string, title string, sections []Section) error {
 		return err
 	}
 
-	if path != "" {
-		var data bytes.Buffer
-		err = t.Execute(&data, vars)
-		if err != nil {
-			return err
-		}
-		err := makeParentDirs(path)
-		if err != nil {
-			return err
-		}
-		return ioutil.WriteFile(path, data.Bytes(), 0644)
-	}
-	return nil
+	return t.Execute(writer, vars)
 }
 
 type Platform struct {
@@ -193,31 +210,40 @@ type Platform struct {
 	LatestName    string
 }
 
-func CopyLatest(bucketName string) error {
+func CopyLatest(bucketName string, platform string) error {
 	client, err := NewClient()
 	if err != nil {
 		return err
 	}
-	return client.CopyLatest(bucketName)
+	return client.CopyLatest(bucketName, platform)
 }
 
-func Platforms() []Platform {
-	return []Platform{
-		Platform{Name: "darwin", Prefix: "darwin/", PrefixSupport: "darwin-support/", LatestName: "Keybase.dmg"},
-		Platform{Name: "deb", Prefix: "linux_binaries/deb/", Suffix: "_amd64.deb", LatestName: "keybase_amd64.deb"},
-		Platform{Name: "rpm", Prefix: "linux_binaries/rpm/", Suffix: ".x86_64.rpm", LatestName: "keybase_amd64.rpm"},
-		Platform{Name: "windows", Prefix: "windows/", Suffix: ".386.exe", LatestName: "keybase_setup_386.exe"},
-	}
+var platformDarwin = Platform{Name: "darwin", Prefix: "darwin/", PrefixSupport: "darwin-support/", LatestName: "Keybase.dmg"}
+var platformLinuxDeb = Platform{Name: "deb", Prefix: "linux_binaries/deb/", Suffix: "_amd64.deb", LatestName: "keybase_amd64.deb"}
+var platformLinuxRPM = Platform{Name: "rpm", Prefix: "linux_binaries/rpm/", Suffix: ".x86_64.rpm", LatestName: "keybase_amd64.rpm"}
+var platformWindows = Platform{Name: "windows", Prefix: "windows/", Suffix: ".386.exe", LatestName: "keybase_setup_386.exe"}
+
+var platformsAll = []Platform{
+	platformDarwin,
+	platformLinuxDeb,
+	platformLinuxRPM,
+	platformWindows,
 }
 
-func FindPlatform(name string) *Platform {
-	platforms := Platforms()
-	for _, p := range platforms {
-		if p.Name == name {
-			return &p
-		}
+// Platforms returns platforms for a name (linux may have multiple platforms) or all platforms is "" is specified
+func Platforms(name string) ([]Platform, error) {
+	switch name {
+	case "darwin":
+		return []Platform{platformDarwin}, nil
+	case "linux":
+		return []Platform{platformLinuxDeb, platformLinuxRPM}, nil
+	case "windows":
+		return []Platform{platformWindows}, nil
+	case "":
+		return platformsAll, nil
+	default:
+		return nil, fmt.Errorf("Invalid platform %s", name)
 	}
-	return nil
 }
 
 func (p *Platform) FindRelease(bucket s3.Bucket, f func(r Release) bool) (*Release, error) {
@@ -238,8 +264,11 @@ func (p *Platform) FindRelease(bucket s3.Bucket, f func(r Release) bool) (*Relea
 	return nil, nil
 }
 
-func (c *Client) CopyLatest(bucketName string) error {
-	platforms := Platforms()
+func (c *Client) CopyLatest(bucketName string, platform string) error {
+	platforms, err := Platforms(platform)
+	if err != nil {
+		return err
+	}
 	for _, platform := range platforms {
 		release, url, err := c.copyFromReleases(platform, bucketName)
 		if err != nil {
@@ -289,7 +318,7 @@ func (c *Client) CurrentUpdate(bucketName string, channel string, platformName s
 	return
 }
 
-func promoteRelease(bucketName string, delay time.Duration, hourEastern int, channel string, platform string, env string) (*Release, error) {
+func promoteRelease(bucketName string, delay time.Duration, hourEastern int, channel string, platform Platform, env string) (*Release, error) {
 	client, err := NewClient()
 	if err != nil {
 		return nil, err
@@ -304,7 +333,7 @@ func updateJSONName(channel string, platformName string, env string) string {
 	return fmt.Sprintf("update-%s-%s-%s.json", platformName, env, channel)
 }
 
-func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHourEastern int, channel string, platformName string, env string) (*Release, error) {
+func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHourEastern int, channel string, platform Platform, env string) (*Release, error) {
 	if channel == "" {
 		log.Printf("Finding release to promote (%s delay, < %dam)", delay, beforeHourEastern)
 	} else {
@@ -312,10 +341,6 @@ func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHo
 	}
 	bucket := c.s3.Bucket(bucketName)
 
-	platform := FindPlatform(platformName)
-	if platform == nil {
-		return nil, fmt.Errorf("Unsupported platform")
-	}
 	release, err := platform.FindRelease(*bucket, func(r Release) bool {
 		log.Printf("Checking release date %s", r.Date)
 		if delay != 0 && time.Since(r.Date) < delay {
@@ -337,9 +362,9 @@ func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHo
 	}
 	log.Printf("Found release %s (%s), %s", release.Name, time.Since(release.Date), release.Version)
 
-	currentUpdate, _, err := c.CurrentUpdate(bucketName, channel, platformName, env)
+	currentUpdate, _, err := c.CurrentUpdate(bucketName, channel, platform.Name, env)
 	if err != nil {
-		log.Printf("Error looking for current update: %s (%s)", err, platformName)
+		log.Printf("Error looking for current update: %s (%s)", err, platform.Name)
 	}
 	if currentUpdate != nil {
 		log.Printf("Found update: %s", currentUpdate.Version)
@@ -361,8 +386,8 @@ func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHo
 		}
 	}
 
-	jsonName := updateJSONName(channel, platformName, env)
-	jsonURL := urlString(bucketName, platform.PrefixSupport, fmt.Sprintf("update-%s-%s-%s.json", platformName, env, release.Version))
+	jsonName := updateJSONName(channel, platform.Name, env)
+	jsonURL := urlString(bucketName, platform.PrefixSupport, fmt.Sprintf("update-%s-%s-%s.json", platform.Name, env, release.Version))
 	//_, err = bucket.PutCopy(jsonName, s3.PublicRead, s3.CopyOptions{}, jsonURL)
 	_, err = putCopy(bucket, jsonName, jsonURL)
 	if err != nil {
@@ -406,7 +431,7 @@ func (c *Client) report(tw *tabwriter.Writer, bucketName string, channel string,
 	} else if update != nil {
 		published := ""
 		if update.PublishedAt != nil {
-			published = keybase1.FromTime(*update.PublishedAt).Format(time.UnixDate)
+			published = convertEastern(keybase1.FromTime(*update.PublishedAt)).Format(time.UnixDate)
 		}
 		fmt.Fprintf(tw, "%s\t%s\n", update.Version, published)
 	} else {
@@ -421,7 +446,7 @@ func Report(bucketName string, writer io.Writer) error {
 	}
 
 	tw := tabwriter.NewWriter(writer, 5, 0, 3, ' ', 0)
-	fmt.Fprintln(tw, "Platform\tType\tVersion\tPublished")
+	fmt.Fprintln(tw, "Platform\tType\tVersion\tCreated")
 	client.report(tw, bucketName, "test", "darwin")
 	client.report(tw, bucketName, "", "darwin")
 	client.report(tw, bucketName, "test", "linux")
@@ -433,7 +458,7 @@ func Report(bucketName string, writer io.Writer) error {
 }
 
 func PromoteTestReleaseForDarwin(bucketName string) (*Release, error) {
-	return promoteRelease(bucketName, time.Duration(0), 0, "test", "darwin", "prod")
+	return promoteRelease(bucketName, time.Duration(0), 0, "test", platformDarwin, "prod")
 }
 
 func PromoteTestReleaseForLinux(bucketName string) error {
@@ -479,7 +504,7 @@ func PromoteReleases(bucketName string, platform string) error {
 }
 
 func PromoteReleaseForDarwin(bucketName string) error {
-	release, err := promoteRelease(bucketName, time.Hour*27, 10, "", "darwin", "prod")
+	release, err := promoteRelease(bucketName, time.Hour*27, 10, "", platformDarwin, "prod")
 	if err == nil && release != nil {
 		log.Printf("Promoted (darwin) release: %s\n", release.Name)
 	}

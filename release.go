@@ -66,10 +66,12 @@ var (
 	indexHTMLBucketName = indexHTMLCmd.Flag("bucket-name", "Bucket name to index").Required().String()
 	indexHTMLPrefixes   = indexHTMLCmd.Flag("prefixes", "Prefixes to include (comma-separated)").Required().String()
 	indexHTMLSuffix     = indexHTMLCmd.Flag("suffix", "Suffix of files").String()
-	indexHTMLDest       = indexHTMLCmd.Flag("dest", "Destination file").Required().String()
+	indexHTMLDest       = indexHTMLCmd.Flag("dest", "Write to file").String()
+	indexHTMLUpload     = indexHTMLCmd.Flag("upload", "Upload to S3").String()
 
 	latestCmd        = app.Command("latest", "Generate latest for s3 bucket")
 	latestBucketName = latestCmd.Flag("bucket-name", "Bucket name to use").Required().String()
+	latestPlatform   = latestCmd.Flag("platform", "Platform (darwin, linux, windows or blank for all)").Default("").String()
 
 	parseVersionCmd    = app.Command("version-parse", "Parse a sematic version string")
 	parseVersionString = parseVersionCmd.Arg("version", "Semantic version to parse").Required().String()
@@ -140,12 +142,12 @@ func main() {
 		}
 		fmt.Fprintf(os.Stdout, "%s\n", out)
 	case indexHTMLCmd.FullCommand():
-		err := update.WriteHTML(*indexHTMLDest, *indexHTMLBucketName, *indexHTMLPrefixes, *indexHTMLSuffix)
+		err := update.WriteHTML(*indexHTMLBucketName, *indexHTMLPrefixes, *indexHTMLSuffix, *indexHTMLDest, *indexHTMLUpload)
 		if err != nil {
 			log.Fatal(err)
 		}
 	case latestCmd.FullCommand():
-		err := update.CopyLatest(*latestBucketName)
+		err := update.CopyLatest(*latestBucketName, *latestPlatform)
 		if err != nil {
 			log.Fatal(err)
 		}
