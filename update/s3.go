@@ -289,7 +289,7 @@ func (c *Client) CurrentUpdate(bucketName string, channel string, platformName s
 	return
 }
 
-func PromoteRelease(bucketName string, delay time.Duration, hourEastern int, channel string, platform string, env string) (*Release, error) {
+func promoteRelease(bucketName string, delay time.Duration, hourEastern int, channel string, platform string, env string) (*Release, error) {
 	client, err := NewClient()
 	if err != nil {
 		return nil, err
@@ -430,4 +430,58 @@ func Report(bucketName string, writer io.Writer) error {
 	client.report(tw, bucketName, "", "windows")
 	tw.Flush()
 	return nil
+}
+
+func PromoteTestReleaseForDarwin(bucketName string) (*Release, error) {
+	return promoteRelease(bucketName, time.Duration(0), 0, "test", "darwin", "prod")
+}
+
+func PromoteTestReleaseForLinux(bucketName string) error {
+	return CopyUpdateJSON(bucketName, "test", "linux", "prod")
+}
+
+func PromoteTestReleaseForWindows(bucketName string) error {
+	return CopyUpdateJSON(bucketName, "test", "windows", "prod")
+}
+
+func PromoteTestReleases(bucketName string, platform string) error {
+	switch platform {
+	case "darwin":
+		_, err := PromoteTestReleaseForDarwin(bucketName)
+		return err
+	case "linux":
+		return PromoteTestReleaseForLinux(bucketName)
+	case "windows":
+		return PromoteTestReleaseForWindows(bucketName)
+	case "":
+		_, err1 := PromoteTestReleaseForDarwin(bucketName)
+		err2 := PromoteTestReleaseForLinux(bucketName)
+		err3 := PromoteTestReleaseForWindows(bucketName)
+		return CombineErrors(err1, err2, err3)
+	default:
+		return fmt.Errorf("Invalid platform %s", platform)
+	}
+}
+
+func PromoteReleases(bucketName string, platform string) error {
+	switch platform {
+	case "darwin":
+		return PromoteReleaseForDarwin(bucketName)
+	case "linux":
+		return fmt.Errorf("Unsupported")
+	case "windows":
+		return fmt.Errorf("Unsupported")
+	case "":
+		return PromoteReleaseForDarwin(bucketName)
+	default:
+		return fmt.Errorf("Invalid platform %s", platform)
+	}
+}
+
+func PromoteReleaseForDarwin(bucketName string) error {
+	release, err := promoteRelease(bucketName, time.Hour*27, 10, "", "darwin", "prod")
+	if err == nil && release != nil {
+		log.Printf("Promoted (darwin) release: %s\n", release.Name)
+	}
+	return err
 }

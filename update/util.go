@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/goamz/goamz/s3"
 )
@@ -50,4 +51,31 @@ func fileExists(path string) (bool, error) {
 		return false, nil
 	}
 	return false, err
+}
+
+// CombineErrors returns a single error for multiple errors, or nil if none
+func CombineErrors(errs ...error) error {
+	errs = RemoveNilErrors(errs)
+	if len(errs) == 0 {
+		return nil
+	} else if len(errs) == 1 {
+		return errs[0]
+	}
+
+	msgs := []string{}
+	for _, err := range errs {
+		msgs = append(msgs, err.Error())
+	}
+	return fmt.Errorf("There were multiple errors: %s", strings.Join(msgs, "; "))
+}
+
+// RemoveNilErrors returns error slice with nil errors removed
+func RemoveNilErrors(errs []error) []error {
+	var r []error
+	for _, err := range errs {
+		if err != nil {
+			r = append(r, err)
+		}
+	}
+	return r
 }

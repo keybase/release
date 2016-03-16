@@ -9,7 +9,6 @@ import (
 	"os"
 	"runtime"
 	"strings"
-	"time"
 
 	gh "github.com/keybase/release/github"
 	"github.com/keybase/release/update"
@@ -77,9 +76,11 @@ var (
 
 	promoteReleasesCmd        = app.Command("promote-releases", "Promote releases")
 	promoteReleasesBucketName = promoteReleasesCmd.Flag("bucket-name", "Bucket name to use").Required().String()
+	promoteReleasesPlatform   = promoteReleasesCmd.Flag("platform", "Platform (darwin, linux, windows or blank for all)").Default("").String()
 
 	promoteTestReleasesCmd        = app.Command("promote-test-releases", "Promote test releases")
 	promoteTestReleasesBucketName = promoteTestReleasesCmd.Flag("bucket-name", "Bucket name to use").Required().String()
+	promoteTestReleasesPlatform   = promoteTestReleasesCmd.Flag("platform", "Platform (darwin, linux, windows or blank for all)").Default("").String()
 
 	updatesReportCmd        = app.Command("updates-report", "Summary of updates/releases")
 	updatesReportBucketName = updatesReportCmd.Flag("bucket-name", "Bucket name to use").Required().String()
@@ -157,26 +158,12 @@ func main() {
 		log.Printf("%s\n", date)
 		log.Printf("%s\n", commit)
 	case promoteReleasesCmd.FullCommand():
-		release, err := update.PromoteRelease(*promoteReleasesBucketName, time.Hour*27, 10, "", "darwin", "prod")
+		err := update.PromoteReleases(*promoteReleasesBucketName, *promoteReleasesPlatform)
 		if err != nil {
 			log.Fatal(err)
-		}
-		if release != nil {
-			log.Printf("Promoted (darwin) release: %s\n", release.Name)
 		}
 	case promoteTestReleasesCmd.FullCommand():
-		// Use latest release for update test json
-		_, err := update.PromoteRelease(*promoteTestReleasesBucketName, time.Duration(0), 0, "test", "darwin", "prod")
-		if err != nil {
-			log.Fatal(err)
-		}
-		// Copy update json to test channel for linux and windows until we implement
-		// delayed updates.
-		err = update.CopyUpdateJSON(*promoteTestReleasesBucketName, "test", "linux", "prod")
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = update.CopyUpdateJSON(*promoteTestReleasesBucketName, "test", "windows", "prod")
+		err := update.PromoteTestReleases(*promoteTestReleasesBucketName, *promoteTestReleasesPlatform)
 		if err != nil {
 			log.Fatal(err)
 		}
