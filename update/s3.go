@@ -156,7 +156,7 @@ func WriteHTML(bucketName string, prefixes string, suffix string, outPath string
 			return err
 		}
 		bucket = client.s3.Bucket(bucketName)
-		log.Printf("Uploading to %s", urlString(bucketName, "", uploadDest))
+		log.Printf("Uploading to %s", urlStringNoEscape(bucketName, uploadDest))
 		err = bucket.Put(uploadDest, buf.Bytes(), "application/html", s3.PublicRead, s3.Options{})
 		if err != nil {
 			return err

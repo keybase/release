@@ -26,6 +26,10 @@ func urlString(bucketName string, prefix string, name string) string {
 	return fmt.Sprintf("https://s3.amazonaws.com/%s/%s%s", bucketName, prefix, url.QueryEscape(name))
 }
 
+func urlStringNoEscape(bucketName string, name string) string {
+	return fmt.Sprintf("https://s3.amazonaws.com/%s/%s", bucketName, name)
+}
+
 func makeParentDirs(filename string) error {
 	dir, _ := filepath.Split(filename)
 	exists, err := fileExists(dir)
