@@ -478,11 +478,6 @@ func PromoteTestReleases(bucketName string, platform string) error {
 		return PromoteTestReleaseForLinux(bucketName)
 	case "windows":
 		return PromoteTestReleaseForWindows(bucketName)
-	case "":
-		_, err1 := PromoteTestReleaseForDarwin(bucketName)
-		err2 := PromoteTestReleaseForLinux(bucketName)
-		err3 := PromoteTestReleaseForWindows(bucketName)
-		return CombineErrors(err1, err2, err3)
 	default:
 		return fmt.Errorf("Invalid platform %s", platform)
 	}
@@ -491,24 +486,17 @@ func PromoteTestReleases(bucketName string, platform string) error {
 func PromoteReleases(bucketName string, platform string) error {
 	switch platform {
 	case "darwin":
-		return PromoteReleaseForDarwin(bucketName)
+		release, err := promoteRelease(bucketName, time.Hour*27, 10, "", platformDarwin, "prod")
+		if err != nil {
+			return err
+		}
+		if release != nil {
+			log.Printf("Promoted (darwin) release: %s\n", release.Name)
+		}
 	case "linux":
 		log.Printf("Promoting releases is unsupported for linux")
-		return nil
 	case "windows":
-		log.Printf("Promoting releases is unsupported for windows")
-		return nil
-	case "":
-		return PromoteReleaseForDarwin(bucketName)
-	default:
-		return fmt.Errorf("Invalid platform %s", platform)
+		log.Printf("Promoting releases is unsupported for window")
 	}
-}
-
-func PromoteReleaseForDarwin(bucketName string) error {
-	release, err := promoteRelease(bucketName, time.Hour*27, 10, "", platformDarwin, "prod")
-	if err == nil && release != nil {
-		log.Printf("Promoted (darwin) release: %s\n", release.Name)
-	}
-	return err
+	return nil
 }

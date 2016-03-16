@@ -71,18 +71,18 @@ var (
 
 	latestCmd        = app.Command("latest", "Generate latest for s3 bucket")
 	latestBucketName = latestCmd.Flag("bucket-name", "Bucket name to use").Required().String()
-	latestPlatform   = latestCmd.Flag("platform", "Platform (darwin, linux, windows or blank for all)").Default("").String()
+	latestPlatform   = latestCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
 
 	parseVersionCmd    = app.Command("version-parse", "Parse a sematic version string")
 	parseVersionString = parseVersionCmd.Arg("version", "Semantic version to parse").Required().String()
 
 	promoteReleasesCmd        = app.Command("promote-releases", "Promote releases")
 	promoteReleasesBucketName = promoteReleasesCmd.Flag("bucket-name", "Bucket name to use").Required().String()
-	promoteReleasesPlatform   = promoteReleasesCmd.Flag("platform", "Platform (darwin, linux, windows or blank for all)").Default("").String()
+	promoteReleasesPlatform   = promoteReleasesCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
 
 	promoteTestReleasesCmd        = app.Command("promote-test-releases", "Promote test releases")
 	promoteTestReleasesBucketName = promoteTestReleasesCmd.Flag("bucket-name", "Bucket name to use").Required().String()
-	promoteTestReleasesPlatform   = promoteTestReleasesCmd.Flag("platform", "Platform (darwin, linux, windows or blank for all)").Default("").String()
+	promoteTestReleasesPlatform   = promoteTestReleasesCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
 
 	updatesReportCmd        = app.Command("updates-report", "Summary of updates/releases")
 	updatesReportBucketName = updatesReportCmd.Flag("bucket-name", "Bucket name to use").Required().String()
