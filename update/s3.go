@@ -270,12 +270,9 @@ func (c *Client) CopyLatest(bucketName string, platform string) error {
 		return err
 	}
 	for _, platform := range platforms {
-		release, url, err := c.copyFromReleases(platform, bucketName)
+		url, err := c.copyFromUpdate(platform, bucketName)
 		if err != nil {
 			return err
-		}
-		if release == nil {
-			continue
 		}
 		if url == "" {
 			continue
