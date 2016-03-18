@@ -273,8 +273,8 @@ func (c *Client) CopyLatest(bucketName string, platform string) error {
 	for _, platform := range platforms {
 		var url string
 		// Use update json to look for current DMG (for darwin)
-		// TODO: Fix for linux
-		if platform.Name == "darwin" || platform.Name == "windows" {
+		// TODO: Fix for linux, windows
+		if platform.Name == "darwin" {
 			url, err = c.copyFromUpdate(platform, bucketName)
 		} else {
 			_, url, err = c.copyFromReleases(platform, bucketName)
@@ -296,10 +296,20 @@ func (c *Client) CopyLatest(bucketName string, platform string) error {
 
 func (c *Client) copyFromUpdate(platform Platform, bucketName string) (url string, err error) {
 	currentUpdate, path, err := c.CurrentUpdate(bucketName, "", platform.Name, "prod")
-	if err != nil || currentUpdate == nil {
-		return "", fmt.Errorf("%s No latest for %s at %s", err, platform.Name, path)
+	if err != nil {
+		return
 	}
-	return currentUpdate.Asset.Url, err
+	if currentUpdate == nil {
+		err = fmt.Errorf("No latest for %s at %s", platform.Name, path)
+		return
+	}
+	switch platform.Name {
+	case "darwin":
+		url = urlString(bucketName, platform.Prefix, fmt.Sprintf("Keybase-%s.dmg", currentUpdate.Version))
+	default:
+		err = fmt.Errorf("Unsupported platform for copyFromUpdate")
+	}
+	return
 }
 
 func (c *Client) copyFromReleases(platform Platform, bucketName string) (release *Release, url string, err error) {
