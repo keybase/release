@@ -116,7 +116,8 @@ func WriteHTML(bucketName string, prefixes string, suffix string, outPath string
 
 	var sections []Section
 	for _, prefix := range strings.Split(prefixes, ",") {
-		resp, err := bucket.List(prefix, "", "", 0)
+		var resp *s3.ListResp
+		resp, err = bucket.List(prefix, "", "", 0)
 		if err != nil {
 			return err
 		}
@@ -270,7 +271,14 @@ func (c *Client) CopyLatest(bucketName string, platform string) error {
 		return err
 	}
 	for _, platform := range platforms {
-		url, err := c.copyFromUpdate(platform, bucketName)
+		var url string
+		// Use update json to look for current DMG (for darwin)
+		// TODO: Fix for linux
+		if platform.Name == "darwin" || platform.Name == "windows" {
+			url, err = c.copyFromUpdate(platform, bucketName)
+		} else {
+			_, url, err = c.copyFromReleases(platform, bucketName)
+		}
 		if err != nil {
 			return err
 		}
@@ -365,11 +373,13 @@ func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHo
 	}
 	if currentUpdate != nil {
 		log.Printf("Found update: %s", currentUpdate.Version)
-		currentVer, err := semver.Make(currentUpdate.Version)
+		var currentVer semver.Version
+		currentVer, err = semver.Make(currentUpdate.Version)
 		if err != nil {
 			return nil, err
 		}
-		releaseVer, err := semver.Make(release.Version)
+		var releaseVer semver.Version
+		releaseVer, err = semver.Make(release.Version)
 		if err != nil {
 			return nil, err
 		}
@@ -493,7 +503,7 @@ func PromoteReleases(bucketName string, platform string) error {
 	case "linux":
 		log.Printf("Promoting releases is unsupported for linux")
 	case "windows":
-		log.Printf("Promoting releases is unsupported for window")
+		log.Printf("Promoting releases is unsupported for windows")
 	}
 	return nil
 }

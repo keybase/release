@@ -36,7 +36,8 @@ func EncodeJSON(version string, name string, src string, URI *url.URL, signature
 
 		// Or use src file modification time for PublishedAt
 		if update.PublishedAt == nil {
-			srcInfo, err := os.Stat(src)
+			var srcInfo os.FileInfo
+			srcInfo, err = os.Stat(src)
 			if err != nil {
 				return nil, err
 			}
