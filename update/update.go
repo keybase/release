@@ -18,6 +18,7 @@ import (
 	releaseVersion "github.com/keybase/release/version"
 )
 
+// EncodeJSON returns JSON (as bytes) for an update
 func EncodeJSON(version string, name string, src string, URI *url.URL, signature string) ([]byte, error) {
 	update := keybase1.Update{
 		Version: version,
@@ -27,14 +28,14 @@ func EncodeJSON(version string, name string, src string, URI *url.URL, signature
 	if src != "" && URI != nil {
 		fileName := path.Base(src)
 
-		// Try to get public at from version string
+		// Get published at from version string
 		_, date, _, err := releaseVersion.Parse(fileName)
 		if err == nil {
 			t := keybase1.ToTime(date)
 			update.PublishedAt = &t
 		}
 
-		// Or use src file modification time for PublishedAt
+		// Or if we can't parse use the src file modification time
 		if update.PublishedAt == nil {
 			var srcInfo os.FileInfo
 			srcInfo, err = os.Stat(src)
@@ -54,9 +55,8 @@ func EncodeJSON(version string, name string, src string, URI *url.URL, signature
 		digest, err := digest(src)
 		if err != nil {
 			return nil, fmt.Errorf("Error creating digest: %s", err)
-		} else {
-			asset.Digest = digest
 		}
+		asset.Digest = digest
 
 		if signature != "" {
 			sig, err := readFile(signature)
@@ -72,6 +72,7 @@ func EncodeJSON(version string, name string, src string, URI *url.URL, signature
 	return json.MarshalIndent(update, "", "  ")
 }
 
+// DecodeJSON returns an update object from JSON (bytes)
 func DecodeJSON(b []byte) (*keybase1.Update, error) {
 	var obj keybase1.Update
 	if err := json.Unmarshal(b, &obj); err != nil {
