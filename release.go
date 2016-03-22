@@ -56,11 +56,12 @@ var (
 	downloadVersion = downloadCmd.Flag("version", "Version").Required().String()
 	downloadSrc     = downloadCmd.Flag("src", "Source file").Required().ExistingFile()
 
-	updateJSONCmd       = app.Command("update-json", "Generate update.json file for updater")
-	updateJSONVersion   = updateJSONCmd.Flag("version", "Version").Required().String()
-	updateJSONSrc       = updateJSONCmd.Flag("src", "Source file").ExistingFile()
-	updateJSONURI       = updateJSONCmd.Flag("uri", "URI for location of files").URL()
-	updateJSONSignature = updateJSONCmd.Flag("signature", "Signature file").ExistingFile()
+	updateJSONCmd         = app.Command("update-json", "Generate update.json file for updater")
+	updateJSONVersion     = updateJSONCmd.Flag("version", "Version").Required().String()
+	updateJSONSrc         = updateJSONCmd.Flag("src", "Source file").ExistingFile()
+	updateJSONURI         = updateJSONCmd.Flag("uri", "URI for location of files").URL()
+	updateJSONSignature   = updateJSONCmd.Flag("signature", "Signature file").ExistingFile()
+	updateJSONDescription = updateJSONCmd.Flag("description", "Description").String()
 
 	indexHTMLCmd        = app.Command("index-html", "Generate index.html for s3 bucket")
 	indexHTMLBucketName = indexHTMLCmd.Flag("bucket-name", "Bucket name to index").Required().String()
@@ -136,7 +137,7 @@ func main() {
 			log.Fatal(err)
 		}
 	case updateJSONCmd.FullCommand():
-		out, err := update.EncodeJSON(*updateJSONVersion, tag(*updateJSONVersion), *updateJSONSrc, *updateJSONURI, *updateJSONSignature)
+		out, err := update.EncodeJSON(*updateJSONVersion, tag(*updateJSONVersion), *updateJSONDescription, *updateJSONSrc, *updateJSONURI, *updateJSONSignature)
 		if err != nil {
 			log.Fatal(err)
 		}

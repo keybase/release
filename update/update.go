@@ -19,21 +19,22 @@ import (
 )
 
 // EncodeJSON returns JSON (as bytes) for an update
-func EncodeJSON(version string, name string, src string, URI *url.URL, signature string) ([]byte, error) {
+func EncodeJSON(version string, name string, description string, src string, URI *url.URL, signature string) ([]byte, error) {
 	update := keybase1.Update{
-		Version: version,
-		Name:    name,
+		Version:     version,
+		Description: description,
+		Name:        name,
+	}
+
+	// Get published at from version string
+	_, date, _, err := releaseVersion.Parse(version)
+	if err == nil {
+		t := keybase1.ToTime(date)
+		update.PublishedAt = &t
 	}
 
 	if src != "" && URI != nil {
 		fileName := path.Base(src)
-
-		// Get published at from version string
-		_, date, _, err := releaseVersion.Parse(fileName)
-		if err == nil {
-			t := keybase1.ToTime(date)
-			update.PublishedAt = &t
-		}
 
 		// Or if we can't parse use the src file modification time
 		if update.PublishedAt == nil {
