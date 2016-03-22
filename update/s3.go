@@ -78,7 +78,7 @@ func loadReleases(keys []s3.Key, bucketName string, prefix string, suffix string
 	for _, k := range keys {
 		if strings.HasSuffix(k.Key, suffix) {
 			urlString, name := urlStringForKey(k, bucketName, prefix)
-			version, date, commit, err := version.Parse(name)
+			version, _, date, commit, err := version.Parse(name)
 			if err != nil {
 				log.Printf("Couldn't get version from name: %s\n", name)
 			}

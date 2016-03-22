@@ -153,11 +153,12 @@ func main() {
 			log.Fatal(err)
 		}
 	case parseVersionCmd.FullCommand():
-		ver, date, commit, err := version.Parse(*parseVersionString)
+		versionFull, versionShort, date, commit, err := version.Parse(*parseVersionString)
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("%s\n", ver)
+		log.Printf("%s\n", versionFull)
+		log.Printf("%s\n", versionShort)
 		log.Printf("%s\n", date)
 		log.Printf("%s\n", commit)
 	case promoteReleasesCmd.FullCommand():

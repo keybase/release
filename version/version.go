@@ -9,16 +9,18 @@ import (
 	"time"
 )
 
-func Parse(name string) (version string, t time.Time, commit string, err error) {
+// Parse parses version, time and commit info from string
+func Parse(name string) (version string, versionShort string, t time.Time, commit string, err error) {
 	versionRegex, _ := regexp.Compile("(\\d+\\.\\d+\\.\\d+)[-.](\\d+)[+.]([[:alnum:]]+)")
 	parts := versionRegex.FindAllStringSubmatch(name, -1)
 	if len(parts) == 0 || len(parts[0]) < 4 {
 		err = fmt.Errorf("Unable to parse: %s", name)
 		return
 	}
-	version = parts[0][1]
+	versionShort = parts[0][1]
 	date := parts[0][2]
 	commit = parts[0][3]
+	version = fmt.Sprintf("%s-%s+%s", versionShort, date, commit)
 	t, _ = time.Parse("20060102150405", date)
 	return
 }

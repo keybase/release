@@ -27,7 +27,7 @@ func EncodeJSON(version string, name string, description string, src string, URI
 	}
 
 	// Get published at from version string
-	_, date, _, err := releaseVersion.Parse(version)
+	_, _, date, _, err := releaseVersion.Parse(version)
 	if err == nil {
 		t := keybase1.ToTime(date)
 		update.PublishedAt = &t
