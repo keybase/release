@@ -131,12 +131,12 @@ func WriteHTML(bucketName string, prefixes string, suffix string, outPath string
 			return err
 		}
 
-		releases := loadReleases(resp.Contents, bucketName, prefix, suffix, 20)
+		releases := loadReleases(resp.Contents, bucketName, prefix, suffix, 50)
 		if len(releases) > 0 {
 			log.Printf("Found %d release(s) at %s\n", len(releases), prefix)
-			for _, release := range releases {
-				log.Printf(" %s %s %s\n", release.Name, release.Version, release.DateString)
-			}
+			// for _, release := range releases {
+			// 	log.Printf(" %s %s %s\n", release.Name, release.Version, release.DateString)
+			// }
 		}
 		sections = append(sections, Section{
 			Header:   prefix,
