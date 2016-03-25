@@ -309,7 +309,8 @@ func (c *Client) CopyLatest(bucketName string, platform string) error {
 			continue
 		}
 		bucket := c.s3.Bucket(bucketName)
-		_, err = putCopy(bucket, platform.LatestName, url)
+		log.Printf("PutCopying %s to %s\n", url, platform.LatestName)
+		_, err = bucket.PutCopy(platform.LatestName, s3.PublicRead, s3.CopyOptions{}, url)
 		if err != nil {
 			return err
 		}
@@ -430,8 +431,8 @@ func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHo
 
 	jsonName := updateJSONName(channel, platform.Name, env)
 	jsonURL := urlString(bucketName, platform.PrefixSupport, fmt.Sprintf("update-%s-%s-%s.json", platform.Name, env, release.Version))
-	//_, err = bucket.PutCopy(jsonName, s3.PublicRead, s3.CopyOptions{}, jsonURL)
-	_, err = putCopy(bucket, jsonName, jsonURL)
+	log.Printf("PutCopying %s to %s\n", jsonURL, jsonName)
+	_, err = bucket.PutCopy(jsonName, s3.PublicRead, s3.CopyOptions{}, jsonURL)
 	if err != nil {
 		return nil, err
 	}
@@ -446,20 +447,9 @@ func copyUpdateJSON(bucketName string, channel string, platformName string, env 
 	jsonNameDest := updateJSONName(channel, platformName, env)
 	jsonURLSource := urlString(bucketName, "", updateJSONName("", platformName, env))
 	bucket := client.s3.Bucket(bucketName)
-	_, err = putCopy(bucket, jsonNameDest, jsonURLSource)
+	log.Printf("PutCopying %s to %s\n", jsonURLSource, jsonNameDest)
+	_, err = bucket.PutCopy(jsonNameDest, s3.PublicRead, s3.CopyOptions{}, jsonURLSource)
 	return err
-}
-
-// Temporary until amz/go PR is live
-func putCopy(b *s3.Bucket, destPath string, sourceURL string) (res *s3.CopyObjectResult, err error) {
-	for i := 0; i < 3; i++ {
-		log.Printf("PutCopying %s to %s\n", sourceURL, destPath)
-		res, err = b.PutCopy(destPath, s3.PublicRead, s3.CopyOptions{}, sourceURL)
-		if err == nil {
-			return
-		}
-	}
-	return
 }
 
 func (c *Client) report(tw *tabwriter.Writer, bucketName string, channel string, platformName string) {
