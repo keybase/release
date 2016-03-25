@@ -22,11 +22,13 @@ import (
 	"github.com/keybase/release/version"
 )
 
+// Section defines a set of releases
 type Section struct {
 	Header   string
 	Releases []Release
 }
 
+// Release defines a release bundle
 type Release struct {
 	Name       string
 	Key        s3.Key
@@ -37,6 +39,7 @@ type Release struct {
 	Commit     string
 }
 
+// ByRelease defines how to sort releases
 type ByRelease []Release
 
 func (s ByRelease) Len() int {
@@ -52,10 +55,12 @@ func (s ByRelease) Less(i, j int) bool {
 	return s[j].Date.Before(s[i].Date)
 }
 
+// Client knows how to find and save releases
 type Client struct {
 	s3 *s3.S3
 }
 
+// NewClient constructs a Client
 func NewClient() (*Client, error) {
 	auth, err := aws.EnvAuth()
 	if err != nil {
@@ -78,6 +83,9 @@ func loadReleases(keys []s3.Key, bucketName string, prefix string, suffix string
 	for _, k := range keys {
 		if strings.HasSuffix(k.Key, suffix) {
 			urlString, name := urlStringForKey(k, bucketName, prefix)
+			if name == "index.html" {
+				continue
+			}
 			version, _, date, commit, err := version.Parse(name)
 			if err != nil {
 				log.Printf("Couldn't get version from name: %s\n", name)
@@ -104,6 +112,7 @@ func loadReleases(keys []s3.Key, bucketName string, prefix string, suffix string
 	return releases
 }
 
+// WriteHTML creates an html file for releases
 func WriteHTML(bucketName string, prefixes string, suffix string, outPath string, uploadDest string) error {
 	client, err := NewClient()
 	if err != nil {
@@ -189,6 +198,7 @@ var htmlTemplate = `
 </html>
 `
 
+// WriteHTMLForLinks writes a summary document for a set of releases
 func WriteHTMLForLinks(title string, sections []Section, writer io.Writer) error {
 	vars := map[string]interface{}{
 		"Title":    title,
@@ -203,6 +213,7 @@ func WriteHTMLForLinks(title string, sections []Section, writer io.Writer) error
 	return t.Execute(writer, vars)
 }
 
+// Platform defines where platform specific files are (in darwin, linux, windows)
 type Platform struct {
 	Name          string
 	Prefix        string
@@ -211,6 +222,7 @@ type Platform struct {
 	LatestName    string
 }
 
+// CopyLatest copies latest release to a fixed path
 func CopyLatest(bucketName string, platform string) error {
 	client, err := NewClient()
 	if err != nil {
@@ -219,10 +231,19 @@ func CopyLatest(bucketName string, platform string) error {
 	return client.CopyLatest(bucketName, platform)
 }
 
-var platformDarwin = Platform{Name: "darwin", Prefix: "darwin/", PrefixSupport: "darwin-support/", LatestName: "Keybase.dmg"}
+const (
+	// PlatformTypeDarwin is platform type for OS X
+	PlatformTypeDarwin = "darwin"
+	// PlatformTypeLinux is platform type for Linux
+	PlatformTypeLinux = "linux"
+	// PlatformTypeWindows is platform type for windows
+	PlatformTypeWindows = "windows"
+)
+
+var platformDarwin = Platform{Name: PlatformTypeDarwin, Prefix: "darwin/", PrefixSupport: "darwin-support/", LatestName: "Keybase.dmg"}
 var platformLinuxDeb = Platform{Name: "deb", Prefix: "linux_binaries/deb/", Suffix: "_amd64.deb", LatestName: "keybase_amd64.deb"}
 var platformLinuxRPM = Platform{Name: "rpm", Prefix: "linux_binaries/rpm/", Suffix: ".x86_64.rpm", LatestName: "keybase_amd64.rpm"}
-var platformWindows = Platform{Name: "windows", Prefix: "windows/", Suffix: ".386.exe", LatestName: "keybase_setup_386.exe"}
+var platformWindows = Platform{Name: PlatformTypeWindows, Prefix: "windows/", Suffix: ".386.exe", LatestName: "keybase_setup_386.exe"}
 
 var platformsAll = []Platform{
 	platformDarwin,
@@ -234,11 +255,11 @@ var platformsAll = []Platform{
 // Platforms returns platforms for a name (linux may have multiple platforms) or all platforms is "" is specified
 func Platforms(name string) ([]Platform, error) {
 	switch name {
-	case "darwin":
+	case PlatformTypeDarwin:
 		return []Platform{platformDarwin}, nil
-	case "linux":
+	case PlatformTypeLinux:
 		return []Platform{platformLinuxDeb, platformLinuxRPM}, nil
-	case "windows":
+	case PlatformTypeWindows:
 		return []Platform{platformWindows}, nil
 	case "":
 		return platformsAll, nil
@@ -247,6 +268,7 @@ func Platforms(name string) ([]Platform, error) {
 	}
 }
 
+// FindRelease searches for a release matching a predicate
 func (p *Platform) FindRelease(bucket s3.Bucket, f func(r Release) bool) (*Release, error) {
 	resp, err := bucket.List(p.Prefix, "", "", 0)
 	if err != nil {
@@ -265,6 +287,7 @@ func (p *Platform) FindRelease(bucket s3.Bucket, f func(r Release) bool) (*Relea
 	return nil, nil
 }
 
+// CopyLatest copies latest release to a fixed path for the Client
 func (c *Client) CopyLatest(bucketName string, platform string) error {
 	platforms, err := Platforms(platform)
 	if err != nil {
@@ -274,7 +297,7 @@ func (c *Client) CopyLatest(bucketName string, platform string) error {
 		var url string
 		// Use update json to look for current DMG (for darwin)
 		// TODO: Fix for linux, windows
-		if platform.Name == "darwin" {
+		if platform.Name == PlatformTypeDarwin {
 			url, err = c.copyFromUpdate(platform, bucketName)
 		} else {
 			_, url, err = c.copyFromReleases(platform, bucketName)
@@ -304,7 +327,7 @@ func (c *Client) copyFromUpdate(platform Platform, bucketName string) (url strin
 		return
 	}
 	switch platform.Name {
-	case "darwin":
+	case PlatformTypeDarwin:
 		url = urlString(bucketName, platform.Prefix, fmt.Sprintf("Keybase-%s.dmg", currentUpdate.Version))
 	default:
 		err = fmt.Errorf("Unsupported platform for copyFromUpdate")
@@ -322,6 +345,7 @@ func (c *Client) copyFromReleases(platform Platform, bucketName string) (release
 	return
 }
 
+// CurrentUpdate returns current update for a platform
 func (c *Client) CurrentUpdate(bucketName string, channel string, platformName string, env string) (currentUpdate *keybase1.Update, path string, err error) {
 	bucket := c.s3.Bucket(bucketName)
 	path = updateJSONName(channel, platformName, env)
@@ -348,6 +372,7 @@ func updateJSONName(channel string, platformName string, env string) string {
 	return fmt.Sprintf("update-%s-%s-%s.json", platformName, env, channel)
 }
 
+// PromoteRelease promotes a test release to the public
 func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHourEastern int, channel string, platform Platform, env string) (*Release, error) {
 	if channel == "" {
 		log.Printf("Finding release to promote (%s delay, < %dam)", delay, beforeHourEastern)
@@ -413,7 +438,7 @@ func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHo
 	return release, nil
 }
 
-func CopyUpdateJSON(bucketName string, channel string, platformName string, env string) error {
+func copyUpdateJSON(bucketName string, channel string, platformName string, env string) error {
 	client, err := NewClient()
 	if err != nil {
 		return err
@@ -456,6 +481,7 @@ func (c *Client) report(tw *tabwriter.Writer, bucketName string, channel string,
 	}
 }
 
+// Report returns a summary of releases
 func Report(bucketName string, writer io.Writer) error {
 	client, err := NewClient()
 	if err != nil {
@@ -464,45 +490,47 @@ func Report(bucketName string, writer io.Writer) error {
 
 	tw := tabwriter.NewWriter(writer, 5, 0, 3, ' ', 0)
 	fmt.Fprintln(tw, "Platform\tType\tVersion\tCreated")
-	client.report(tw, bucketName, "test", "darwin")
-	client.report(tw, bucketName, "", "darwin")
-	client.report(tw, bucketName, "test", "linux")
-	client.report(tw, bucketName, "", "linux")
-	client.report(tw, bucketName, "test", "windows")
-	client.report(tw, bucketName, "", "windows")
+	client.report(tw, bucketName, "test", PlatformTypeDarwin)
+	client.report(tw, bucketName, "", PlatformTypeDarwin)
+	client.report(tw, bucketName, "test", PlatformTypeLinux)
+	client.report(tw, bucketName, "", PlatformTypeLinux)
+	client.report(tw, bucketName, "test", PlatformTypeWindows)
+	client.report(tw, bucketName, "", PlatformTypeWindows)
 	tw.Flush()
 	return nil
 }
 
-func PromoteTestReleaseForDarwin(bucketName string) (*Release, error) {
+func promoteTestReleaseForDarwin(bucketName string) (*Release, error) {
 	return promoteRelease(bucketName, time.Duration(0), 0, "test", platformDarwin, "prod")
 }
 
-func PromoteTestReleaseForLinux(bucketName string) error {
-	return CopyUpdateJSON(bucketName, "test", "linux", "prod")
+func promoteTestReleaseForLinux(bucketName string) error {
+	return copyUpdateJSON(bucketName, "test", PlatformTypeLinux, "prod")
 }
 
-func PromoteTestReleaseForWindows(bucketName string) error {
-	return CopyUpdateJSON(bucketName, "test", "windows", "prod")
+func promoteTestReleaseForWindows(bucketName string) error {
+	return copyUpdateJSON(bucketName, "test", PlatformTypeWindows, "prod")
 }
 
+// PromoteTestReleases promotes test releases for a platform
 func PromoteTestReleases(bucketName string, platform string) error {
 	switch platform {
-	case "darwin":
-		_, err := PromoteTestReleaseForDarwin(bucketName)
+	case PlatformTypeDarwin:
+		_, err := promoteTestReleaseForDarwin(bucketName)
 		return err
-	case "linux":
-		return PromoteTestReleaseForLinux(bucketName)
-	case "windows":
-		return PromoteTestReleaseForWindows(bucketName)
+	case PlatformTypeLinux:
+		return promoteTestReleaseForLinux(bucketName)
+	case PlatformTypeWindows:
+		return promoteTestReleaseForWindows(bucketName)
 	default:
 		return fmt.Errorf("Invalid platform %s", platform)
 	}
 }
 
+// PromoteReleases promotes releases for a platform
 func PromoteReleases(bucketName string, platform string) error {
 	switch platform {
-	case "darwin":
+	case PlatformTypeDarwin:
 		release, err := promoteRelease(bucketName, time.Hour*27, 10, "", platformDarwin, "prod")
 		if err != nil {
 			return err
@@ -510,9 +538,9 @@ func PromoteReleases(bucketName string, platform string) error {
 		if release != nil {
 			log.Printf("Promoted (darwin) release: %s\n", release.Name)
 		}
-	case "linux":
+	case PlatformTypeLinux:
 		log.Printf("Promoting releases is unsupported for linux")
-	case "windows":
+	case PlatformTypeWindows:
 		log.Printf("Promoting releases is unsupported for windows")
 	}
 	return nil
