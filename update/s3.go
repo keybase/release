@@ -370,11 +370,59 @@ func promoteRelease(bucketName string, delay time.Duration, hourEastern int, cha
 	return client.PromoteRelease(bucketName, delay, hourEastern, channel, platform, env)
 }
 
+func promoteARelease(releaseName string, bucketName string, platform Platform, env string) (*Release, error) {
+	client, err := NewClient()
+	if err != nil {
+		return nil, err
+	}
+	return client.PromoteDarwinReleaseToProd(releaseName, bucketName, platformDarwin, env)
+}
+
 func updateJSONName(channel string, platformName string, env string) string {
 	if channel == "" {
 		return fmt.Sprintf("update-%s-%s.json", platformName, env)
 	}
 	return fmt.Sprintf("update-%s-%s-%s.json", platformName, env, channel)
+}
+
+// PromoteDarwinReleaseToProd promotes a specific Mac release from test->public
+func (c *Client) PromoteDarwinReleaseToProd(releaseName string, bucketName string, platform Platform, env string) (*Release, error) {
+	if platform.Name != "darwin" {
+		log.Printf("Promoting is currently only supported on darwin")
+		return nil, nil
+	}
+	if env != "prod" {
+		log.Printf("Promoting is currently only supported for prod")
+		return nil, nil
+	}
+	bucket := c.s3.Bucket(bucketName)
+	releaseName = fmt.Sprintf("Keybase-%s.dmg", releaseName)
+	release, err := platform.FindRelease(*bucket, func(r Release) bool {
+		log.Printf("Checking release name %s against %s", r.Name, releaseName)
+		if r.Name == releaseName {
+			return true
+		}
+		return false
+	})
+	if err != nil {
+		return nil, err
+	}
+	if release == nil {
+		log.Printf("No matching release found")
+		return nil, nil
+	}
+	log.Printf("Found release %s (%s), %s", release.Name, time.Since(release.Date), release.Version)
+	channel := ""
+	jsonName := updateJSONName(channel, platform.Name, env)
+	jsonURL := urlString(bucketName, platform.PrefixSupport, fmt.Sprintf("update-%s-%s-%s.json", platform.Name, env, release.Version))
+	log.Printf("PutCopying %s to %s\n", jsonURL, jsonName)
+	opts := s3.CopyOptions{}
+	opts.CacheControl = "maxage=60"
+	_, err = bucket.PutCopy(jsonName, s3.PublicRead, opts, jsonURL)
+	if err != nil {
+		return nil, err
+	}
+	return release, nil
 }
 
 // PromoteRelease promotes a test release to the public
@@ -530,6 +578,25 @@ func PromoteReleases(bucketName string, platform string) error {
 	switch platform {
 	case PlatformTypeDarwin:
 		release, err := promoteRelease(bucketName, time.Hour*27, 10, "", platformDarwin, "prod")
+		if err != nil {
+			return err
+		}
+		if release != nil {
+			log.Printf("Promoted (darwin) release: %s\n", release.Name)
+		}
+	case PlatformTypeLinux:
+		log.Printf("Promoting releases is unsupported for linux")
+	case PlatformTypeWindows:
+		log.Printf("Promoting releases is unsupported for windows")
+	}
+	return nil
+}
+
+// PromoteARelease promotes a specific release to Darwin Prod.
+func PromoteARelease(releaseName string, bucketName string, platform string) error {
+	switch platform {
+	case PlatformTypeDarwin:
+		release, err := promoteARelease(releaseName, bucketName, platformDarwin, "prod")
 		if err != nil {
 			return err
 		}
