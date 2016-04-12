@@ -401,7 +401,6 @@ func (c *Client) promoteDarwinReleaseToProd(releaseName string, bucketName strin
 	bucket := c.s3.Bucket(bucketName)
 	releaseName = fmt.Sprintf("Keybase-%s.dmg", releaseName)
 	release, err := platform.FindRelease(*bucket, func(r Release) bool {
-		log.Printf("Checking release name %s against %s", r.Name, releaseName)
 		if r.Name == releaseName {
 			return true
 		}
