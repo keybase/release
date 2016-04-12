@@ -81,6 +81,11 @@ var (
 	promoteReleasesBucketName = promoteReleasesCmd.Flag("bucket-name", "Bucket name to use").Required().String()
 	promoteReleasesPlatform   = promoteReleasesCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
 
+	promoteAReleaseCmd        = app.Command("promote-a-release", "Promote a specific release")
+	releaseToPromote          = promoteAReleaseCmd.Flag("release", "Specific release to promote to public").Required().String()
+	promoteAReleaseBucketName = promoteAReleaseCmd.Flag("bucket-name", "Bucket name to use").Required().String()
+	promoteAReleasePlatform   = promoteAReleaseCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
+
 	promoteTestReleasesCmd        = app.Command("promote-test-releases", "Promote test releases")
 	promoteTestReleasesBucketName = promoteTestReleasesCmd.Flag("bucket-name", "Bucket name to use").Required().String()
 	promoteTestReleasesPlatform   = promoteTestReleasesCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
@@ -163,6 +168,11 @@ func main() {
 		log.Printf("%s\n", commit)
 	case promoteReleasesCmd.FullCommand():
 		err := update.PromoteReleases(*promoteReleasesBucketName, *promoteReleasesPlatform)
+		if err != nil {
+			log.Fatal(err)
+		}
+	case promoteAReleaseCmd.FullCommand():
+		err := update.PromoteARelease(*releaseToPromote, *promoteAReleaseBucketName, *promoteAReleasePlatform)
 		if err != nil {
 			log.Fatal(err)
 		}

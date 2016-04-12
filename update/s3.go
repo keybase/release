@@ -377,6 +377,55 @@ func updateJSONName(channel string, platformName string, env string) string {
 	return fmt.Sprintf("update-%s-%s-%s.json", platformName, env, channel)
 }
 
+// PromoteARelease promotes a specific release to Darwin Prod.
+func PromoteARelease(releaseName string, bucketName string, platform string) error {
+	if platform != PlatformTypeDarwin {
+		return fmt.Errorf("Promoting releases is only supported for darwin")
+	}
+
+	client, nerr := NewClient()
+	if nerr != nil {
+		return nerr
+	}
+
+	cerr := client.promoteDarwinReleaseToProd(releaseName, bucketName, platformDarwin, "prod")
+	if cerr != nil {
+		return cerr
+	}
+
+	log.Printf("Promoted (darwin) release: %s\n", releaseName)
+	return nil
+}
+
+func (c *Client) promoteDarwinReleaseToProd(releaseName string, bucketName string, platform Platform, env string) error {
+	bucket := c.s3.Bucket(bucketName)
+	releaseName = fmt.Sprintf("Keybase-%s.dmg", releaseName)
+	release, err := platform.FindRelease(*bucket, func(r Release) bool {
+		if r.Name == releaseName {
+			return true
+		}
+		return false
+	})
+	if err != nil {
+		return err
+	}
+	if release == nil {
+		return fmt.Errorf("No matching release found")
+	}
+	log.Printf("Found release %s (%s), %s", release.Name, time.Since(release.Date), release.Version)
+	channel := ""
+	jsonName := updateJSONName(channel, platform.Name, env)
+	jsonURL := urlString(bucketName, platform.PrefixSupport, fmt.Sprintf("update-%s-%s-%s.json", platform.Name, env, release.Version))
+	log.Printf("PutCopying %s to %s\n", jsonURL, jsonName)
+	opts := s3.CopyOptions{}
+	opts.CacheControl = "maxage=60"
+	_, err = bucket.PutCopy(jsonName, s3.PublicRead, opts, jsonURL)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // PromoteRelease promotes a test release to the public
 func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHourEastern int, channel string, platform Platform, env string) (*Release, error) {
 	if channel == "" {
