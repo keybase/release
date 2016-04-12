@@ -420,7 +420,7 @@ func (c *Client) promoteDarwinReleaseToProd(releaseName string, bucketName strin
 	log.Printf("PutCopying %s to %s\n", jsonURL, jsonName)
 	opts := s3.CopyOptions{}
 	opts.CacheControl = "maxage=60"
-	//_, err = bucket.PutCopy(jsonName, s3.PublicRead, opts, jsonURL)
+	_, err = bucket.PutCopy(jsonName, s3.PublicRead, opts, jsonURL)
 	if err != nil {
 		return err
 	}
