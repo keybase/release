@@ -22,6 +22,8 @@ import (
 	"github.com/keybase/release/version"
 )
 
+const defaultCacheControl = "max-age=60"
+
 // Section defines a set of releases
 type Section struct {
 	Header   string
@@ -168,7 +170,7 @@ func WriteHTML(bucketName string, prefixes string, suffix string, outPath string
 		bucket = client.s3.Bucket(bucketName)
 		log.Printf("Uploading to %s", urlStringNoEscape(bucketName, uploadDest))
 		opts := s3.Options{}
-		opts.CacheControl = "maxage=60"
+		opts.CacheControl = defaultCacheControl
 		err = bucket.Put(uploadDest, buf.Bytes(), "text/html", s3.PublicRead, opts)
 		if err != nil {
 			return err
@@ -313,7 +315,7 @@ func (c *Client) CopyLatest(bucketName string, platform string) error {
 		bucket := c.s3.Bucket(bucketName)
 		log.Printf("PutCopying %s to %s\n", url, platform.LatestName)
 		opts := s3.CopyOptions{}
-		opts.CacheControl = "maxage=60"
+		opts.CacheControl = defaultCacheControl
 		_, err = bucket.PutCopy(platform.LatestName, s3.PublicRead, opts, url)
 		if err != nil {
 			return err
@@ -419,7 +421,7 @@ func (c *Client) promoteDarwinReleaseToProd(releaseName string, bucketName strin
 	jsonURL := urlString(bucketName, platform.PrefixSupport, fmt.Sprintf("update-%s-%s-%s.json", platform.Name, env, release.Version))
 	log.Printf("PutCopying %s to %s\n", jsonURL, jsonName)
 	opts := s3.CopyOptions{}
-	opts.CacheControl = "maxage=60"
+	opts.CacheControl = defaultCacheControl
 	_, err = bucket.PutCopy(jsonName, s3.PublicRead, opts, jsonURL)
 	if err != nil {
 		return err
@@ -487,7 +489,7 @@ func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHo
 	jsonURL := urlString(bucketName, platform.PrefixSupport, fmt.Sprintf("update-%s-%s-%s.json", platform.Name, env, release.Version))
 	log.Printf("PutCopying %s to %s\n", jsonURL, jsonName)
 	opts := s3.CopyOptions{}
-	opts.CacheControl = "maxage=60"
+	opts.CacheControl = defaultCacheControl
 	_, err = bucket.PutCopy(jsonName, s3.PublicRead, opts, jsonURL)
 	if err != nil {
 		return nil, err
@@ -505,7 +507,7 @@ func copyUpdateJSON(bucketName string, channel string, platformName string, env 
 	bucket := client.s3.Bucket(bucketName)
 	log.Printf("PutCopying %s to %s\n", jsonURLSource, jsonNameDest)
 	opts := s3.CopyOptions{}
-	opts.CacheControl = "maxage=60"
+	opts.CacheControl = defaultCacheControl
 	_, err = bucket.PutCopy(jsonNameDest, s3.PublicRead, opts, jsonURLSource)
 	return err
 }
