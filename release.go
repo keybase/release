@@ -70,10 +70,6 @@ var (
 	indexHTMLDest       = indexHTMLCmd.Flag("dest", "Write to file").String()
 	indexHTMLUpload     = indexHTMLCmd.Flag("upload", "Upload to S3").String()
 
-	latestCmd        = app.Command("latest", "Generate latest for s3 bucket")
-	latestBucketName = latestCmd.Flag("bucket-name", "Bucket name to use").Required().String()
-	latestPlatform   = latestCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
-
 	parseVersionCmd    = app.Command("version-parse", "Parse a sematic version string")
 	parseVersionString = parseVersionCmd.Arg("version", "Semantic version to parse").Required().String()
 
@@ -152,11 +148,6 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-	case latestCmd.FullCommand():
-		err := update.CopyLatest(*latestBucketName, *latestPlatform)
-		if err != nil {
-			log.Fatal(err)
-		}
 	case parseVersionCmd.FullCommand():
 		versionFull, versionShort, date, commit, err := version.Parse(*parseVersionString)
 		if err != nil {
@@ -171,8 +162,16 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		err = update.CopyLatest(*promoteReleasesBucketName, *promoteReleasesPlatform)
+		if err != nil {
+			log.Fatal(err)
+		}
 	case promoteAReleaseCmd.FullCommand():
 		err := update.PromoteARelease(*releaseToPromote, *promoteAReleaseBucketName, *promoteAReleasePlatform)
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = update.CopyLatest(*promoteAReleaseBucketName, *promoteAReleasePlatform)
 		if err != nil {
 			log.Fatal(err)
 		}
