@@ -88,6 +88,9 @@ var (
 
 	updatesReportCmd        = app.Command("updates-report", "Summary of updates/releases")
 	updatesReportBucketName = updatesReportCmd.Flag("bucket-name", "Bucket name to use").Required().String()
+
+	latestCommitCmd  = app.Command("latest-commit", "Latests commit we can use to safely build from")
+	latestCommitRepo = latestCommitCmd.Flag("repo", "Repository name").Required().String()
 )
 
 func main() {
@@ -185,5 +188,16 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+	case latestCommitCmd.FullCommand():
+		contexts := map[string]string{
+			"continuous-integration/travis-ci/push":  "success",
+			"continuous-integration/appveyor/branch": "success",
+			//"ci/circleci":                            "success",
+		}
+		commit, err := gh.LatestCommit(githubToken(true), *latestCommitRepo, contexts)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("%s", commit.SHA)
 	}
 }

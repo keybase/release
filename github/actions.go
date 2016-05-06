@@ -134,3 +134,29 @@ func Download(token string, url string, name string) error {
 	}
 	return err
 }
+
+// LatestCommit returns a latest commit for all statuses matching state and contexts
+func LatestCommit(token string, repo string, contexts map[string]string) (*Commit, error) {
+	commits, err := Commits("keybase", repo, token)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, commit := range commits {
+		statuses, err := Statuses("keybase", repo, commit.SHA, token)
+		if err != nil {
+			return nil, err
+		}
+		matching := map[string]Status{}
+		for _, status := range statuses {
+			if contexts[status.Context] == status.State {
+				matching[status.Context] = status
+			}
+		}
+		// If we match all contexts then we've found the commit
+		if len(contexts) == len(matching) {
+			return &commit, nil
+		}
+	}
+	return nil, nil
+}
