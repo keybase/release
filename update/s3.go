@@ -18,7 +18,6 @@ import (
 	"github.com/blang/semver"
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/s3"
-	keybase1 "github.com/keybase/client/go/protocol"
 	"github.com/keybase/release/version"
 )
 
@@ -354,7 +353,7 @@ func (c *Client) copyFromReleases(platform Platform, bucketName string) (release
 }
 
 // CurrentUpdate returns current update for a platform
-func (c *Client) CurrentUpdate(bucketName string, channel string, platformName string, env string) (currentUpdate *keybase1.Update, path string, err error) {
+func (c *Client) CurrentUpdate(bucketName string, channel string, platformName string, env string) (currentUpdate *Update, path string, err error) {
 	bucket := c.s3.Bucket(bucketName)
 	path = updateJSONName(channel, platformName, env)
 	data, err := bucket.Get(path)
@@ -523,7 +522,7 @@ func (c *Client) report(tw *tabwriter.Writer, bucketName string, channel string,
 	} else if update != nil {
 		published := ""
 		if update.PublishedAt != nil {
-			published = convertEastern(keybase1.FromTime(*update.PublishedAt)).Format(time.UnixDate)
+			published = convertEastern(FromTime(*update.PublishedAt)).Format(time.UnixDate)
 		}
 		fmt.Fprintf(tw, "%s\t%s\n", update.Version, published)
 	} else {

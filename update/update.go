@@ -14,13 +14,12 @@ import (
 	"os"
 	"path"
 
-	"github.com/keybase/client/go/protocol"
 	releaseVersion "github.com/keybase/release/version"
 )
 
 // EncodeJSON returns JSON (as bytes) for an update
 func EncodeJSON(version string, name string, description string, src string, URI *url.URL, signature string) ([]byte, error) {
-	update := keybase1.Update{
+	update := Update{
 		Version:     version,
 		Description: description,
 		Name:        name,
@@ -29,7 +28,7 @@ func EncodeJSON(version string, name string, description string, src string, URI
 	// Get published at from version string
 	_, _, date, _, err := releaseVersion.Parse(version)
 	if err == nil {
-		t := keybase1.ToTime(date)
+		t := ToTime(date)
 		update.PublishedAt = &t
 	}
 
@@ -43,14 +42,14 @@ func EncodeJSON(version string, name string, description string, src string, URI
 			if err != nil {
 				return nil, err
 			}
-			t := keybase1.ToTime(srcInfo.ModTime())
+			t := ToTime(srcInfo.ModTime())
 			update.PublishedAt = &t
 		}
 
 		urlString := fmt.Sprintf("%s/%s", URI.String(), url.QueryEscape(fileName))
-		asset := keybase1.Asset{
+		asset := Asset{
 			Name: fileName,
-			Url:  urlString,
+			URL:  urlString,
 		}
 
 		digest, err := digest(src)
@@ -74,8 +73,8 @@ func EncodeJSON(version string, name string, description string, src string, URI
 }
 
 // DecodeJSON returns an update object from JSON (bytes)
-func DecodeJSON(b []byte) (*keybase1.Update, error) {
-	var obj keybase1.Update
+func DecodeJSON(b []byte) (*Update, error) {
+	var obj Update
 	if err := json.Unmarshal(b, &obj); err != nil {
 		return nil, err
 	}
