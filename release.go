@@ -85,7 +85,6 @@ var (
 	brokenReleaseCmd        = app.Command("broken-release", "Mark a release as broken")
 	brokenReleaseName       = brokenReleaseCmd.Flag("release", "Release to mark as broken").Required().String()
 	brokenReleaseBucketName = brokenReleaseCmd.Flag("bucket-name", "Bucket name to use").Required().String()
-	brokenReleasePlatform   = brokenReleaseCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
 
 	promoteTestReleasesCmd        = app.Command("promote-test-releases", "Promote test releases")
 	promoteTestReleasesBucketName = promoteTestReleasesCmd.Flag("bucket-name", "Bucket name to use").Required().String()
@@ -191,7 +190,7 @@ func main() {
 			log.Fatal(err)
 		}
 	case brokenReleaseCmd.FullCommand():
-		err := update.ReleaseBroken(*brokenReleaseName, *brokenReleaseBucketName, *brokenReleasePlatform)
+		err := update.ReleaseBroken(*brokenReleaseName, *brokenReleaseBucketName)
 		if err != nil {
 			log.Fatal(err)
 		}

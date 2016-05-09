@@ -298,6 +298,23 @@ func (p Platform) Files(release Release) []string {
 			fmt.Sprintf("darwin-updates/Keybase-%s.zip", release.Version),
 			fmt.Sprintf("darwin-support/update-darwin-prod-%s.json", release.Version),
 		}
+	case "deb":
+		return []string{
+			// TODO: Get full file list from jack
+			fmt.Sprintf("linux_binaries/keybase_%s_i386.deb", release.Version),
+			fmt.Sprintf("linux_binaries/keybase_%s_amd64.deb", release.Version),
+		}
+	case "rpm":
+		return []string{
+			// TODO: Get full file list from jack
+			fmt.Sprintf("linux_binaries/keybase-%s-1.x86_64.rpm", release.Version),
+			fmt.Sprintf("linux_binaries/keybase-%s-1.i386.rpm", release.Version),
+		}
+	case PlatformTypeWindows:
+		return []string{
+			fmt.Sprintf("windows/keybase_setup_gui_%s_386.exe", release.Version),
+			fmt.Sprintf("windows-updates/keybase_setup_gui_%s_386.exe", release.Version),
+		}
 	default:
 		return []string{}
 	}
@@ -609,17 +626,14 @@ func PromoteReleases(bucketName string, platform string) error {
 }
 
 // ReleaseBroken marks a release as broken
-func ReleaseBroken(release string, bucketName string, platformName string) error {
+func ReleaseBroken(release string, bucketName string) error {
 	client, err := NewClient()
 	if err != nil {
 		return err
 	}
 
-	platforms, err := Platforms(platformName)
-	if err != nil {
-		return err
-	}
-	for _, platform := range platforms {
+	found := false
+	for _, platform := range platformsAll {
 		bucket := client.s3.Bucket(bucketName)
 		release, err := platform.FindRelease(*bucket, func(r Release) bool {
 			return release == r.Version
@@ -627,24 +641,28 @@ func ReleaseBroken(release string, bucketName string, platformName string) error
 		if err != nil {
 			return err
 		}
-		if release != nil {
-			log.Printf("Found release: %#v", release)
-			for _, path := range platform.Files(*release) {
-				sourceURL := urlString(bucketName, "", path)
-				brokenPath := fmt.Sprintf("broken/%s", path)
-				log.Printf("Copying %s to %s", sourceURL, brokenPath)
-				if _, err = bucket.PutCopy(brokenPath, s3.PublicRead, s3.CopyOptions{}, sourceURL); err != nil {
-					log.Printf("There was an error trying to (put) copy %s", sourceURL)
-					continue
-				}
-				log.Printf("Deleting %s", path)
-				if err := bucket.Del(path); err != nil {
-					return err
-				}
-			}
-			log.Printf("Removed %s", release.Version)
-			return nil
+		if release == nil {
+			continue
 		}
+		found = true
+		log.Printf("Found release: %#v", release)
+		for _, path := range platform.Files(*release) {
+			sourceURL := urlString(bucketName, "", path)
+			brokenPath := fmt.Sprintf("broken/%s", path)
+			log.Printf("Copying %s to %s", sourceURL, brokenPath)
+			if _, err = bucket.PutCopy(brokenPath, s3.PublicRead, s3.CopyOptions{}, sourceURL); err != nil {
+				log.Printf("There was an error trying to (put) copy %s", sourceURL)
+				continue
+			}
+			log.Printf("Deleting %s", path)
+			if err := bucket.Del(path); err != nil {
+				return err
+			}
+		}
+		log.Printf("Removed %s", release.Version)
 	}
-	return fmt.Errorf("Release not found: %s", release)
+	if !found {
+		return fmt.Errorf("No release found: %s", release)
+	}
+	return nil
 }
