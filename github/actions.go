@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"time"
 )
 
 func CreateRelease(token string, repo string, tag string, name string) error {
@@ -157,6 +158,42 @@ func LatestCommit(token string, repo string, contexts map[string]string) (*Commi
 		if len(contexts) == len(matching) {
 			return &commit, nil
 		}
+	}
+	return nil, nil
+}
+
+// WaitForCI waits for latest commit in repo to pass CI contexts
+func WaitForCI(token string, repo string, contexts map[string]string, delay time.Duration, timeout time.Duration) (*Commit, error) {
+	commits, err := Commits("keybase", repo, token)
+	if err != nil {
+		return nil, err
+	}
+	if len(commits) == 0 {
+		return nil, fmt.Errorf("No commits")
+	}
+
+	commit := commits[0]
+	start := time.Now()
+	for time.Since(start) < timeout {
+		log.Printf("Checking status for %s", commit.SHA)
+		statuses, err := Statuses("keybase", repo, commit.SHA, token)
+		if err != nil {
+			return nil, err
+		}
+		matching := map[string]Status{}
+		for _, status := range statuses {
+			if contexts[status.Context] == status.State {
+				matching[status.Context] = status
+			}
+		}
+		// If we match all contexts then we've passed
+		if len(contexts) == len(matching) {
+			log.Printf("Commit passed: %s", matching)
+			return &commit, nil
+		}
+
+		log.Printf("Waiting %s", delay)
+		time.Sleep(delay)
 	}
 	return nil, nil
 }
