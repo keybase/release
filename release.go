@@ -88,6 +88,11 @@ var (
 
 	updatesReportCmd        = app.Command("updates-report", "Summary of updates/releases")
 	updatesReportBucketName = updatesReportCmd.Flag("bucket-name", "Bucket name to use").Required().String()
+
+	saveLogCmd        = app.Command("save-log", "Save log")
+	saveLogBucketName = saveLogCmd.Flag("bucket-name", "Bucket name to use").Required().String()
+	saveLogPath       = saveLogCmd.Flag("path", "File to save").Required().String()
+	saveLogNoErr      = saveLogCmd.Flag("noerr", "No error status on failure").Bool()
 )
 
 func main() {
@@ -185,5 +190,15 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+	case saveLogCmd.FullCommand():
+		url, err := update.SaveLog(*saveLogBucketName, *saveLogPath, 100*1024)
+		if err != nil {
+			if *saveLogNoErr {
+				log.Printf("%s", err)
+				return
+			}
+			log.Fatal(err)
+		}
+		fmt.Fprintf(os.Stdout, "%s\n", url)
 	}
 }

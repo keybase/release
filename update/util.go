@@ -4,6 +4,8 @@
 package update
 
 import (
+	"crypto/rand"
+	"encoding/base32"
 	"fmt"
 	"net/url"
 	"os"
@@ -82,4 +84,25 @@ func RemoveNilErrors(errs []error) []error {
 		}
 	}
 	return r
+}
+
+// RandString returns random (base32) string with prefix
+func RandString(numBytes int) (string, error) {
+	buf, err := RandBytes(numBytes)
+	if err != nil {
+		return "", err
+	}
+	str := base32.StdEncoding.EncodeToString(buf)
+	return str, nil
+}
+
+var randRead = rand.Read
+
+// RandBytes returns random bytes of length
+func RandBytes(length int) ([]byte, error) {
+	buf := make([]byte, length)
+	if _, err := randRead(buf); err != nil {
+		return nil, err
+	}
+	return buf, nil
 }
