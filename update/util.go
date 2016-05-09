@@ -86,13 +86,14 @@ func RemoveNilErrors(errs []error) []error {
 	return r
 }
 
-// RandString returns random (base32) string with prefix
-func RandString(numBytes int) (string, error) {
-	buf, err := RandBytes(numBytes)
+// RandomID returns a random identifier
+func RandomID() (string, error) {
+	buf, err := RandBytes(32)
 	if err != nil {
 		return "", err
 	}
 	str := base32.StdEncoding.EncodeToString(buf)
+	str = strings.Replace(str, "=", "", -1)
 	return str, nil
 }
 

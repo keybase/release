@@ -620,7 +620,7 @@ func SaveLog(bucketName string, localPath string, maxNumBytes int64) (string, er
 	}
 
 	filename := filepath.Base(localPath)
-	logID, err := RandString(20)
+	logID, err := RandomID()
 	if err != nil {
 		return "", err
 	}
