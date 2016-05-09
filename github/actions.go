@@ -162,23 +162,14 @@ func LatestCommit(token string, repo string, contexts map[string]string) (*Commi
 	return nil, nil
 }
 
-// WaitForCI waits for latest commit in repo to pass CI contexts
-func WaitForCI(token string, repo string, contexts map[string]string, delay time.Duration, timeout time.Duration) (*Commit, error) {
-	commits, err := Commits("keybase", repo, token)
-	if err != nil {
-		return nil, err
-	}
-	if len(commits) == 0 {
-		return nil, fmt.Errorf("No commits")
-	}
-
-	commit := commits[0]
+// WaitForCI waits for commit in repo to pass CI contexts
+func WaitForCI(token string, repo string, commit string, contexts map[string]string, delay time.Duration, timeout time.Duration) error {
 	start := time.Now()
 	for time.Since(start) < timeout {
-		log.Printf("Checking status for %s", commit.SHA)
-		statuses, err := Statuses("keybase", repo, commit.SHA, token)
+		log.Printf("Checking status for %s", commit)
+		statuses, err := Statuses("keybase", repo, commit, token)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		matching := map[string]Status{}
 		for _, status := range statuses {
@@ -189,11 +180,11 @@ func WaitForCI(token string, repo string, contexts map[string]string, delay time
 		// If we match all contexts then we've passed
 		if len(contexts) == len(matching) {
 			log.Printf("Commit passed: %s", matching)
-			return &commit, nil
+			return nil
 		}
 
 		log.Printf("Waiting %s", delay)
 		time.Sleep(delay)
 	}
-	return nil, nil
+	return fmt.Errorf("Timed out")
 }

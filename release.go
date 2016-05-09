@@ -100,8 +100,9 @@ var (
 
 	waitForCICmd     = app.Command("wait-ci", "Waits on a the latest commit being successful in CI")
 	waitForCIRepo    = waitForCICmd.Flag("repo", "Repository name").Required().String()
+	waitForCICommit  = waitForCICmd.Flag("commit", "Commit").Required().String()
 	waitForCIDelay   = waitForCICmd.Flag("delay", "Delay between checks").Default("30s").Duration()
-	waitForCITimeout = waitForCICmd.Flag("timeout", "Delay between checks").Default("30m").Duration()
+	waitForCITimeout = waitForCICmd.Flag("timeout", "Delay between checks").Default("1m").Duration()
 )
 
 func main() {
@@ -206,10 +207,9 @@ func main() {
 		}
 		fmt.Printf("%s", commit.SHA)
 	case waitForCICmd.FullCommand():
-		commit, err := gh.WaitForCI(githubToken(true), *waitForCIRepo, defaultCIContexts, *waitForCIDelay, *waitForCITimeout)
+		err := gh.WaitForCI(githubToken(true), *waitForCIRepo, *waitForCICommit, defaultCIContexts, *waitForCIDelay, *waitForCITimeout)
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf("%s", commit.SHA)
 	}
 }
