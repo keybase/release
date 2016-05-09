@@ -301,14 +301,14 @@ func (p Platform) Files(release Release) []string {
 	case "deb":
 		return []string{
 			// TODO: Get full file list from jack
-			fmt.Sprintf("linux_binaries/keybase_%s_i386.deb", release.Version),
-			fmt.Sprintf("linux_binaries/keybase_%s_amd64.deb", release.Version),
+			fmt.Sprintf("linux_binaries/deb/keybase_%s_i386.deb", release.Version),
+			fmt.Sprintf("linux_binaries/deb/keybase_%s_amd64.deb", release.Version),
 		}
 	case "rpm":
 		return []string{
 			// TODO: Get full file list from jack
-			fmt.Sprintf("linux_binaries/keybase-%s-1.x86_64.rpm", release.Version),
-			fmt.Sprintf("linux_binaries/keybase-%s-1.i386.rpm", release.Version),
+			fmt.Sprintf("linux_binaries/rpm/keybase-%s-1.x86_64.rpm", release.Version),
+			fmt.Sprintf("linux_binaries/rpm/keybase-%s-1.i386.rpm", release.Version),
 		}
 	case PlatformTypeWindows:
 		return []string{
