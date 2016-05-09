@@ -83,7 +83,7 @@ func loadReleases(keys []s3.Key, bucketName string, prefix string, suffix string
 	var releases []Release
 	for _, k := range keys {
 		if strings.HasSuffix(k.Key, suffix) {
-			urlString, name := urlStringForKey(k, bucketName, prefix)
+			_, name := urlStringForKey(k, bucketName, prefix)
 			if name == "index.html" {
 				continue
 			}
@@ -96,7 +96,6 @@ func loadReleases(keys []s3.Key, bucketName string, prefix string, suffix string
 				Release{
 					Name:       name,
 					Key:        k,
-					URL:        urlString,
 					Version:    version,
 					Date:       date,
 					DateString: date.Format("Mon Jan _2 15:04:05 MST 2006"),
@@ -288,6 +287,20 @@ func (p *Platform) FindRelease(bucket s3.Bucket, f func(r Release) bool) (*Relea
 		}
 	}
 	return nil, nil
+}
+
+// Files returns all files associated with this platforms release
+func (p Platform) Files(release Release) []string {
+	switch p.Name {
+	case PlatformTypeDarwin:
+		return []string{
+			fmt.Sprintf("darwin/Keybase-%s.dmg", release.Version),
+			fmt.Sprintf("darwin-updates/Keybase-%s.zip", release.Version),
+			fmt.Sprintf("darwin-support/update-darwin-prod-%s.json", release.Version),
+		}
+	default:
+		return []string{}
+	}
 }
 
 // CopyLatest copies latest release to a fixed path for the Client
@@ -593,4 +606,45 @@ func PromoteReleases(bucketName string, platform string) error {
 		log.Printf("Promoting releases is unsupported for windows")
 	}
 	return nil
+}
+
+// ReleaseBroken marks a release as broken
+func ReleaseBroken(release string, bucketName string, platformName string) error {
+	client, err := NewClient()
+	if err != nil {
+		return err
+	}
+
+	platforms, err := Platforms(platformName)
+	if err != nil {
+		return err
+	}
+	for _, platform := range platforms {
+		bucket := client.s3.Bucket(bucketName)
+		release, err := platform.FindRelease(*bucket, func(r Release) bool {
+			return release == r.Version
+		})
+		if err != nil {
+			return err
+		}
+		if release != nil {
+			log.Printf("Found release: %#v", release)
+			for _, path := range platform.Files(*release) {
+				sourceURL := urlString(bucketName, "", path)
+				brokenPath := fmt.Sprintf("broken/%s", path)
+				log.Printf("Copying %s to %s", sourceURL, brokenPath)
+				if _, err = bucket.PutCopy(brokenPath, s3.PublicRead, s3.CopyOptions{}, sourceURL); err != nil {
+					log.Printf("There was an error trying to (put) copy %s", sourceURL)
+					continue
+				}
+				log.Printf("Deleting %s", path)
+				if err := bucket.Del(path); err != nil {
+					return err
+				}
+			}
+			log.Printf("Removed %s", release.Version)
+			return nil
+		}
+	}
+	return fmt.Errorf("Release not found: %s", release)
 }

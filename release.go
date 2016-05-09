@@ -82,6 +82,11 @@ var (
 	promoteAReleaseBucketName = promoteAReleaseCmd.Flag("bucket-name", "Bucket name to use").Required().String()
 	promoteAReleasePlatform   = promoteAReleaseCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
 
+	brokenReleaseCmd        = app.Command("broken-release", "Mark a release as broken")
+	brokenReleaseName       = brokenReleaseCmd.Flag("release", "Release to mark as broken").Required().String()
+	brokenReleaseBucketName = brokenReleaseCmd.Flag("bucket-name", "Bucket name to use").Required().String()
+	brokenReleasePlatform   = brokenReleaseCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
+
 	promoteTestReleasesCmd        = app.Command("promote-test-releases", "Promote test releases")
 	promoteTestReleasesBucketName = promoteTestReleasesCmd.Flag("bucket-name", "Bucket name to use").Required().String()
 	promoteTestReleasesPlatform   = promoteTestReleasesCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
@@ -182,6 +187,11 @@ func main() {
 		}
 	case updatesReportCmd.FullCommand():
 		err := update.Report(*updatesReportBucketName, os.Stdout)
+		if err != nil {
+			log.Fatal(err)
+		}
+	case brokenReleaseCmd.FullCommand():
+		err := update.ReleaseBroken(*brokenReleaseName, *brokenReleaseBucketName, *brokenReleasePlatform)
 		if err != nil {
 			log.Fatal(err)
 		}
