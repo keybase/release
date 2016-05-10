@@ -28,12 +28,6 @@ func tag(version string) string {
 	return fmt.Sprintf("v%s", version)
 }
 
-// defaultCIContexts are default context/states for Github CI statuses
-var defaultCIContexts = map[string]string{
-	"continuous-integration/travis-ci/push":  "success",
-	"continuous-integration/appveyor/branch": "success",
-}
-
 var (
 	app               = kingpin.New("release", "Release tool for build and release scripts")
 	latestVersionCmd  = app.Command("latest-version", "Get latest version of a Github repo")
@@ -201,13 +195,21 @@ func main() {
 			log.Fatal(err)
 		}
 	case latestCommitCmd.FullCommand():
-		commit, err := gh.LatestCommit(githubToken(true), *latestCommitRepo, defaultCIContexts)
+		contexts := map[string]string{
+			"continuous-integration/travis-ci/push":  "success",
+			"continuous-integration/appveyor/branch": "success",
+		}
+		commit, err := gh.LatestCommit(githubToken(true), *latestCommitRepo, contexts)
 		if err != nil {
 			log.Fatal(err)
 		}
 		fmt.Printf("%s", commit.SHA)
 	case waitForCICmd.FullCommand():
-		err := gh.WaitForCI(githubToken(true), *waitForCIRepo, *waitForCICommit, defaultCIContexts, *waitForCIDelay, *waitForCITimeout)
+		contexts := []string{
+			"continuous-integration/travis-ci/push",
+			"continuous-integration/appveyor/branch",
+		}
+		err := gh.WaitForCI(githubToken(true), *waitForCIRepo, *waitForCICommit, contexts, *waitForCIDelay, *waitForCITimeout)
 		if err != nil {
 			log.Fatal(err)
 		}

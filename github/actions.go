@@ -162,8 +162,17 @@ func LatestCommit(token string, repo string, contexts map[string]string) (*Commi
 	return nil, nil
 }
 
+func stringInSlice(str string, list []string) bool {
+	for _, s := range list {
+		if s == str {
+			return true
+		}
+	}
+	return false
+}
+
 // WaitForCI waits for commit in repo to pass CI contexts
-func WaitForCI(token string, repo string, commit string, contexts map[string]string, delay time.Duration, timeout time.Duration) error {
+func WaitForCI(token string, repo string, commit string, contexts []string, delay time.Duration, timeout time.Duration) error {
 	start := time.Now()
 	for time.Since(start) < timeout {
 		log.Printf("Checking status for %s", commit)
@@ -173,13 +182,19 @@ func WaitForCI(token string, repo string, commit string, contexts map[string]str
 		}
 		matching := map[string]Status{}
 		for _, status := range statuses {
-			if contexts[status.Context] == status.State {
-				matching[status.Context] = status
+			if stringInSlice(status.Context, contexts) {
+				switch status.State {
+				case "failure":
+					log.Printf("%s (failure)", status.Context)
+					return fmt.Errorf("Failure in CI for %s", status.Context)
+				case "success":
+					log.Printf("%s (success)", status.Context)
+					matching[status.Context] = status
+				}
 			}
 		}
 		// If we match all contexts then we've passed
 		if len(contexts) == len(matching) {
-			log.Printf("Commit passed: %s", matching)
 			return nil
 		}
 
