@@ -198,6 +198,7 @@ func main() {
 		contexts := map[string]string{
 			"continuous-integration/travis-ci/push":  "success",
 			"continuous-integration/appveyor/branch": "success",
+			"ci/circleci":                            "success",
 		}
 		commit, err := gh.LatestCommit(githubToken(true), *latestCommitRepo, contexts)
 		if err != nil {
@@ -208,6 +209,7 @@ func main() {
 		contexts := []string{
 			"continuous-integration/travis-ci/push",
 			"continuous-integration/appveyor/branch",
+			"ci/circleci",
 		}
 		err := gh.WaitForCI(githubToken(true), *waitForCIRepo, *waitForCICommit, contexts, *waitForCIDelay, *waitForCITimeout)
 		if err != nil {
