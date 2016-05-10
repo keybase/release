@@ -92,6 +92,16 @@ var (
 
 	updatesReportCmd        = app.Command("updates-report", "Summary of updates/releases")
 	updatesReportBucketName = updatesReportCmd.Flag("bucket-name", "Bucket name to use").Required().String()
+
+	latestCommitCmd  = app.Command("latest-commit", "Latests commit we can use to safely build from")
+	latestCommitRepo = latestCommitCmd.Flag("repo", "Repository name").Required().String()
+
+	waitForCICmd      = app.Command("wait-ci", "Waits on a the latest commit being successful in CI")
+	waitForCIRepo     = waitForCICmd.Flag("repo", "Repository name").Required().String()
+	waitForCICommit   = waitForCICmd.Flag("commit", "Commit").Required().String()
+	waitForCIContexts = waitForCICmd.Flag("context", "Context to check for success").Required().Strings()
+	waitForCIDelay    = waitForCICmd.Flag("delay", "Delay between checks").Default("30s").Duration()
+	waitForCITimeout  = waitForCICmd.Flag("timeout", "Delay between checks").Default("30m").Duration()
 )
 
 func main() {
@@ -191,6 +201,23 @@ func main() {
 		}
 	case brokenReleaseCmd.FullCommand():
 		err := update.ReleaseBroken(*brokenReleaseName, *brokenReleaseBucketName)
+		if err != nil {
+			log.Fatal(err)
+		}
+	case latestCommitCmd.FullCommand():
+		// TODO: Pass from command line
+		contexts := map[string]string{
+			"continuous-integration/travis-ci/push":  "success",
+			"continuous-integration/appveyor/branch": "success",
+			"ci/circleci":                            "success",
+		}
+		commit, err := gh.LatestCommit(githubToken(true), *latestCommitRepo, contexts)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("%s", commit.SHA)
+	case waitForCICmd.FullCommand():
+		err := gh.WaitForCI(githubToken(true), *waitForCIRepo, *waitForCICommit, *waitForCIContexts, *waitForCIDelay, *waitForCITimeout)
 		if err != nil {
 			log.Fatal(err)
 		}
