@@ -92,11 +92,12 @@ var (
 	latestCommitCmd  = app.Command("latest-commit", "Latests commit we can use to safely build from")
 	latestCommitRepo = latestCommitCmd.Flag("repo", "Repository name").Required().String()
 
-	waitForCICmd     = app.Command("wait-ci", "Waits on a the latest commit being successful in CI")
-	waitForCIRepo    = waitForCICmd.Flag("repo", "Repository name").Required().String()
-	waitForCICommit  = waitForCICmd.Flag("commit", "Commit").Required().String()
-	waitForCIDelay   = waitForCICmd.Flag("delay", "Delay between checks").Default("30s").Duration()
-	waitForCITimeout = waitForCICmd.Flag("timeout", "Delay between checks").Default("30m").Duration()
+	waitForCICmd      = app.Command("wait-ci", "Waits on a the latest commit being successful in CI")
+	waitForCIRepo     = waitForCICmd.Flag("repo", "Repository name").Required().String()
+	waitForCICommit   = waitForCICmd.Flag("commit", "Commit").Required().String()
+	waitForCIContexts = waitForCICmd.Flag("context", "Context to check for success").Required().Strings()
+	waitForCIDelay    = waitForCICmd.Flag("delay", "Delay between checks").Default("30s").Duration()
+	waitForCITimeout  = waitForCICmd.Flag("timeout", "Delay between checks").Default("30m").Duration()
 )
 
 func main() {
@@ -195,6 +196,7 @@ func main() {
 			log.Fatal(err)
 		}
 	case latestCommitCmd.FullCommand():
+		// TODO: Pass from command line
 		contexts := map[string]string{
 			"continuous-integration/travis-ci/push":  "success",
 			"continuous-integration/appveyor/branch": "success",
@@ -206,12 +208,7 @@ func main() {
 		}
 		fmt.Printf("%s", commit.SHA)
 	case waitForCICmd.FullCommand():
-		contexts := []string{
-			"continuous-integration/travis-ci/push",
-			"continuous-integration/appveyor/branch",
-			"ci/circleci",
-		}
-		err := gh.WaitForCI(githubToken(true), *waitForCIRepo, *waitForCICommit, contexts, *waitForCIDelay, *waitForCITimeout)
+		err := gh.WaitForCI(githubToken(true), *waitForCIRepo, *waitForCICommit, *waitForCIContexts, *waitForCIDelay, *waitForCITimeout)
 		if err != nil {
 			log.Fatal(err)
 		}

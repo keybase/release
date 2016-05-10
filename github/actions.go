@@ -175,7 +175,7 @@ func stringInSlice(str string, list []string) bool {
 func WaitForCI(token string, repo string, commit string, contexts []string, delay time.Duration, timeout time.Duration) error {
 	start := time.Now()
 	for time.Since(start) < timeout {
-		log.Printf("Checking status for %s", commit)
+		log.Printf("Checking status for %s (%s)", contexts, commit)
 		statuses, err := Statuses("keybase", repo, commit, token)
 		if err != nil {
 			return err
