@@ -73,9 +73,9 @@ func EncodeJSON(version string, name string, description string, src string, URI
 }
 
 // DecodeJSON returns an update object from JSON (bytes)
-func DecodeJSON(b []byte) (*Update, error) {
+func DecodeJSON(r io.ReadCloser) (*Update, error) {
 	var obj Update
-	if err := json.Unmarshal(b, &obj); err != nil {
+	if err := json.NewDecoder(r).Decode(&obj); err != nil {
 		return nil, err
 	}
 	return &obj, nil

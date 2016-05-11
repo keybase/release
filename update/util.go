@@ -9,12 +9,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/goamz/goamz/s3"
 )
 
-func urlStringForKey(k s3.Key, bucketName string, prefix string) (string, string) {
-	key := k.Key
+func urlStringForKey(key string, bucketName string, prefix string) (string, string) {
 	name := key[len(prefix):]
 	return fmt.Sprintf("https://s3.amazonaws.com/%s/%s%s", bucketName, prefix, url.QueryEscape(name)), name
 }
