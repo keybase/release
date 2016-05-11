@@ -18,9 +18,11 @@ import (
 
 	"github.com/alecthomas/template"
 	"github.com/blang/semver"
-	"github.com/goamz/goamz/aws"
-	"github.com/goamz/goamz/s3"
 	"github.com/keybase/release/version"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 )
 
 const defaultCacheControl = "max-age=60"
@@ -34,7 +36,7 @@ type Section struct {
 // Release defines a release bundle
 type Release struct {
 	Name       string
-	Key        s3.Key
+	Key        string
 	URL        string
 	Version    string
 	DateString string
@@ -58,19 +60,15 @@ func (s ByRelease) Less(i, j int) bool {
 	return s[j].Date.Before(s[i].Date)
 }
 
-// Client knows how to find and save releases
+// Client is an S3 client
 type Client struct {
-	s3 *s3.S3
+	svc *s3.S3
 }
 
 // NewClient constructs a Client
 func NewClient() (*Client, error) {
-	auth, err := aws.EnvAuth()
-	if err != nil {
-		return nil, err
-	}
-	s3 := s3.New(auth, aws.USEast)
-	return &Client{s3: s3}, nil
+	svc := s3.New(session.New(&aws.Config{Region: aws.String("us-east-1")}))
+	return &Client{svc: svc}, nil
 }
 
 func convertEastern(t time.Time) time.Time {
@@ -81,11 +79,11 @@ func convertEastern(t time.Time) time.Time {
 	return t.In(locationNewYork)
 }
 
-func loadReleases(keys []s3.Key, bucketName string, prefix string, suffix string, truncate int) []Release {
+func loadReleases(objects []*s3.Object, bucketName string, prefix string, suffix string, truncate int) []Release {
 	var releases []Release
-	for _, k := range keys {
-		if strings.HasSuffix(k.Key, suffix) {
-			urlString, name := urlStringForKey(k, bucketName, prefix)
+	for _, obj := range objects {
+		if strings.HasSuffix(*obj.Key, suffix) {
+			_, name := urlStringForKey(*obj.Key, bucketName, prefix)
 			if name == "index.html" {
 				continue
 			}
@@ -97,8 +95,7 @@ func loadReleases(keys []s3.Key, bucketName string, prefix string, suffix string
 			releases = append(releases,
 				Release{
 					Name:       name,
-					Key:        k,
-					URL:        urlString,
+					Key:        *obj.Key,
 					Version:    version,
 					Date:       date,
 					DateString: date.Format("Mon Jan _2 15:04:05 MST 2006"),
@@ -121,17 +118,12 @@ func WriteHTML(bucketName string, prefixes string, suffix string, outPath string
 	if err != nil {
 		return err
 	}
-	bucket := client.s3.Bucket(bucketName)
-	if bucket == nil {
-		return fmt.Errorf("Bucket %s not found", bucketName)
-	}
 
 	var sections []Section
 	for _, prefix := range strings.Split(prefixes, ",") {
-		var resp *s3.ListResp
-		resp, err = bucket.List(prefix, "", "", 0)
-		if err != nil {
-			return err
+		resp, listErr := client.svc.ListObjects(&s3.ListObjectsInput{Bucket: aws.String(bucketName), Prefix: aws.String(prefix)})
+		if listErr != nil {
+			return listErr
 		}
 
 		releases := loadReleases(resp.Contents, bucketName, prefix, suffix, 50)
@@ -168,11 +160,17 @@ func WriteHTML(bucketName string, prefixes string, suffix string, outPath string
 		if err != nil {
 			return err
 		}
-		bucket = client.s3.Bucket(bucketName)
-		log.Printf("Uploading to %s", urlStringNoEscape(bucketName, uploadDest))
-		opts := s3.Options{}
-		opts.CacheControl = defaultCacheControl
-		err = bucket.Put(uploadDest, buf.Bytes(), "text/html", s3.PublicRead, opts)
+
+		log.Printf("Uploading to %s", uploadDest)
+		_, err = client.svc.PutObject(&s3.PutObjectInput{
+			Bucket:        aws.String(bucketName),
+			Key:           aws.String(uploadDest),
+			CacheControl:  aws.String(defaultCacheControl),
+			ACL:           aws.String("public-read"),
+			Body:          bytes.NewReader(buf.Bytes()),
+			ContentLength: aws.Int64(int64(buf.Len())),
+			ContentType:   aws.String("text/html"),
+		})
 		if err != nil {
 			return err
 		}
@@ -274,15 +272,22 @@ func Platforms(name string) ([]Platform, error) {
 }
 
 // FindRelease searches for a release matching a predicate
-func (p *Platform) FindRelease(bucket s3.Bucket, f func(r Release) bool) (*Release, error) {
-	resp, err := bucket.List(p.Prefix, "", "", 0)
+func (p *Platform) FindRelease(bucketName string, f func(r Release) bool) (*Release, error) {
+	client, err := NewClient()
 	if err != nil {
 		return nil, err
 	}
-	releases := loadReleases(resp.Contents, bucket.Name, p.Prefix, p.Suffix, 0)
+	resp, err := client.svc.ListObjects(&s3.ListObjectsInput{
+		Bucket: aws.String(bucketName),
+		Prefix: aws.String(p.Prefix),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	releases := loadReleases(resp.Contents, bucketName, p.Prefix, p.Suffix, 0)
 	for _, release := range releases {
-		k := release.Key
-		if !strings.HasSuffix(k.Key, p.Suffix) {
+		if !strings.HasSuffix(release.Key, p.Suffix) {
 			continue
 		}
 		if f(release) {
@@ -290,6 +295,37 @@ func (p *Platform) FindRelease(bucket s3.Bucket, f func(r Release) bool) (*Relea
 		}
 	}
 	return nil, nil
+}
+
+// Files returns all files associated with this platforms release
+func (p Platform) Files(release Release) []string {
+	switch p.Name {
+	case PlatformTypeDarwin:
+		return []string{
+			fmt.Sprintf("darwin/Keybase-%s.dmg", release.Version),
+			fmt.Sprintf("darwin-updates/Keybase-%s.zip", release.Version),
+			fmt.Sprintf("darwin-support/update-darwin-prod-%s.json", release.Version),
+		}
+	case "deb":
+		return []string{
+			// TODO: Get full file list from jack
+			fmt.Sprintf("linux_binaries/deb/keybase_%s_i386.deb", release.Version),
+			fmt.Sprintf("linux_binaries/deb/keybase_%s_amd64.deb", release.Version),
+		}
+	case "rpm":
+		return []string{
+			// TODO: Get full file list from jack
+			fmt.Sprintf("linux_binaries/rpm/keybase-%s-1.x86_64.rpm", release.Version),
+			fmt.Sprintf("linux_binaries/rpm/keybase-%s-1.i386.rpm", release.Version),
+		}
+	case PlatformTypeWindows:
+		return []string{
+			fmt.Sprintf("windows/keybase_setup_gui_%s_386.exe", release.Version),
+			fmt.Sprintf("windows-updates/keybase_setup_gui_%s_386.exe", release.Version),
+		}
+	default:
+		return []string{}
+	}
 }
 
 // CopyLatest copies latest release to a fixed path for the Client
@@ -313,11 +349,14 @@ func (c *Client) CopyLatest(bucketName string, platform string) error {
 		if url == "" {
 			continue
 		}
-		bucket := c.s3.Bucket(bucketName)
-		log.Printf("PutCopying %s to %s\n", url, platform.LatestName)
-		opts := s3.CopyOptions{}
-		opts.CacheControl = defaultCacheControl
-		_, err = bucket.PutCopy(platform.LatestName, s3.PublicRead, opts, url)
+
+		_, err := c.svc.CopyObject(&s3.CopyObjectInput{
+			Bucket:       aws.String(bucketName),
+			CopySource:   aws.String(url),
+			Key:          aws.String(platform.LatestName),
+			CacheControl: aws.String(defaultCacheControl),
+			ACL:          aws.String("public-read"),
+		})
 		if err != nil {
 			return err
 		}
@@ -345,8 +384,7 @@ func (c *Client) copyFromUpdate(platform Platform, bucketName string) (url strin
 }
 
 func (c *Client) copyFromReleases(platform Platform, bucketName string) (release *Release, url string, err error) {
-	bucket := c.s3.Bucket(bucketName)
-	release, err = platform.FindRelease(*bucket, func(r Release) bool { return true })
+	release, err = platform.FindRelease(bucketName, func(r Release) bool { return true })
 	if err != nil || release == nil {
 		return
 	}
@@ -356,13 +394,16 @@ func (c *Client) copyFromReleases(platform Platform, bucketName string) (release
 
 // CurrentUpdate returns current update for a platform
 func (c *Client) CurrentUpdate(bucketName string, channel string, platformName string, env string) (currentUpdate *Update, path string, err error) {
-	bucket := c.s3.Bucket(bucketName)
 	path = updateJSONName(channel, platformName, env)
-	data, err := bucket.Get(path)
+	resp, err := c.svc.GetObject(&s3.GetObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(path),
+	})
 	if err != nil {
 		return
 	}
-	currentUpdate, err = DecodeJSON(data)
+	defer resp.Body.Close()
+	currentUpdate, err = DecodeJSON(resp.Body)
 	return
 }
 
@@ -402,9 +443,8 @@ func PromoteARelease(releaseName string, bucketName string, platform string) err
 }
 
 func (c *Client) promoteDarwinReleaseToProd(releaseName string, bucketName string, platform Platform, env string) error {
-	bucket := c.s3.Bucket(bucketName)
 	releaseName = fmt.Sprintf("Keybase-%s.dmg", releaseName)
-	release, err := platform.FindRelease(*bucket, func(r Release) bool {
+	release, err := platform.FindRelease(bucketName, func(r Release) bool {
 		if r.Name == releaseName {
 			return true
 		}
@@ -421,9 +461,14 @@ func (c *Client) promoteDarwinReleaseToProd(releaseName string, bucketName strin
 	jsonName := updateJSONName(channel, platform.Name, env)
 	jsonURL := urlString(bucketName, platform.PrefixSupport, fmt.Sprintf("update-%s-%s-%s.json", platform.Name, env, release.Version))
 	log.Printf("PutCopying %s to %s\n", jsonURL, jsonName)
-	opts := s3.CopyOptions{}
-	opts.CacheControl = defaultCacheControl
-	_, err = bucket.PutCopy(jsonName, s3.PublicRead, opts, jsonURL)
+
+	_, err = c.svc.CopyObject(&s3.CopyObjectInput{
+		Bucket:       aws.String(bucketName),
+		CopySource:   aws.String(jsonURL),
+		Key:          aws.String(jsonName),
+		CacheControl: aws.String(defaultCacheControl),
+		ACL:          aws.String("public-read"),
+	})
 	if err != nil {
 		return err
 	}
@@ -437,9 +482,7 @@ func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHo
 	} else {
 		log.Printf("Finding release to promote for %s channel (%s delay)", channel, delay)
 	}
-	bucket := c.s3.Bucket(bucketName)
-
-	release, err := platform.FindRelease(*bucket, func(r Release) bool {
+	release, err := platform.FindRelease(bucketName, func(r Release) bool {
 		log.Printf("Checking release date %s", r.Date)
 		if delay != 0 && time.Since(r.Date) < delay {
 			return false
@@ -489,9 +532,14 @@ func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHo
 	jsonName := updateJSONName(channel, platform.Name, env)
 	jsonURL := urlString(bucketName, platform.PrefixSupport, fmt.Sprintf("update-%s-%s-%s.json", platform.Name, env, release.Version))
 	log.Printf("PutCopying %s to %s\n", jsonURL, jsonName)
-	opts := s3.CopyOptions{}
-	opts.CacheControl = defaultCacheControl
-	_, err = bucket.PutCopy(jsonName, s3.PublicRead, opts, jsonURL)
+	_, err = c.svc.CopyObject(&s3.CopyObjectInput{
+		Bucket:       aws.String(bucketName),
+		CopySource:   aws.String(jsonURL),
+		Key:          aws.String(jsonName),
+		CacheControl: aws.String(defaultCacheControl),
+		ACL:          aws.String("public-read"),
+	})
+
 	if err != nil {
 		return nil, err
 	}
@@ -505,11 +553,15 @@ func copyUpdateJSON(bucketName string, channel string, platformName string, env 
 	}
 	jsonNameDest := updateJSONName(channel, platformName, env)
 	jsonURLSource := urlString(bucketName, "", updateJSONName("", platformName, env))
-	bucket := client.s3.Bucket(bucketName)
+
 	log.Printf("PutCopying %s to %s\n", jsonURLSource, jsonNameDest)
-	opts := s3.CopyOptions{}
-	opts.CacheControl = defaultCacheControl
-	_, err = bucket.PutCopy(jsonNameDest, s3.PublicRead, opts, jsonURLSource)
+	_, err = client.svc.CopyObject(&s3.CopyObjectInput{
+		Bucket:       aws.String(bucketName),
+		CopySource:   aws.String(jsonURLSource),
+		Key:          aws.String(jsonNameDest),
+		CacheControl: aws.String(defaultCacheControl),
+		ACL:          aws.String("public-read"),
+	})
 	return err
 }
 
@@ -597,6 +649,56 @@ func PromoteReleases(bucketName string, platform string) error {
 	return nil
 }
 
+// ReleaseBroken marks a release as broken
+func ReleaseBroken(releaseName string, bucketName string) error {
+	client, err := NewClient()
+	if err != nil {
+		return err
+	}
+
+	found := false
+	for _, platform := range []Platform{platformDarwin} {
+		release, err := platform.FindRelease(bucketName, func(r Release) bool {
+			return releaseName == r.Version
+		})
+		if err != nil {
+			return err
+		}
+		if release == nil {
+			continue
+		}
+		found = true
+		log.Printf("Found release: %#v", release)
+		for _, path := range platform.Files(*release) {
+			sourceURL := urlString(bucketName, "", path)
+			brokenPath := fmt.Sprintf("broken/%s", path)
+			log.Printf("Copying %s to %s", sourceURL, brokenPath)
+
+			_, err := client.svc.CopyObject(&s3.CopyObjectInput{
+				Bucket:       aws.String(bucketName),
+				CopySource:   aws.String(sourceURL),
+				Key:          aws.String(brokenPath),
+				CacheControl: aws.String(defaultCacheControl),
+				ACL:          aws.String("public-read"),
+			})
+			if err != nil {
+				log.Printf("There was an error trying to (put) copy %s: %s", sourceURL, err)
+				continue
+			}
+
+			log.Printf("Deleting: %s", path)
+			if _, err := client.svc.DeleteObject(&s3.DeleteObjectInput{Bucket: aws.String(bucketName), Key: aws.String(path)}); err != nil {
+				return err
+			}
+		}
+		log.Printf("Removed files for %s", release.Version)
+	}
+	if !found {
+		return fmt.Errorf("No release found: %s", releaseName)
+	}
+	return nil
+}
+
 // SaveLog saves log to S3 bucket (last maxNumBytes) and returns the URL.
 // The log is publicly readable on S3 but the url is not discoverable.
 func SaveLog(bucketName string, localPath string, maxNumBytes int64) (string, error) {
@@ -611,10 +713,10 @@ func SaveLog(bucketName string, localPath string, maxNumBytes int64) (string, er
 	}
 	defer file.Close()
 
-	bytes := make([]byte, maxNumBytes)
+	data := make([]byte, maxNumBytes)
 	stat, err := os.Stat(localPath)
 	start := stat.Size() - maxNumBytes
-	_, err = file.ReadAt(bytes, start)
+	_, err = file.ReadAt(data, start)
 	if err != nil {
 		return "", err
 	}
@@ -625,11 +727,20 @@ func SaveLog(bucketName string, localPath string, maxNumBytes int64) (string, er
 		return "", err
 	}
 	uploadDest := filepath.Join("logs", fmt.Sprintf("%s-%s%s", filename, logID, ".txt"))
-	bucket := client.s3.Bucket(bucketName)
-	url := urlStringNoEscape(bucketName, uploadDest)
-	log.Printf("Uploading to %s", url)
-	if putErr := bucket.Put(uploadDest, bytes, "text/plain", s3.PublicRead, s3.Options{}); putErr != nil {
-		return "", putErr
+
+	_, err = client.svc.PutObject(&s3.PutObjectInput{
+		Bucket:        aws.String(bucketName),
+		Key:           aws.String(uploadDest),
+		CacheControl:  aws.String(defaultCacheControl),
+		ACL:           aws.String("public-read"),
+		Body:          bytes.NewReader(data),
+		ContentLength: aws.Int64(int64(len(data))),
+		ContentType:   aws.String("text/plain"),
+	})
+	if err != nil {
+		return "", err
 	}
+
+	url := urlStringNoEscape(bucketName, uploadDest)
 	return url, nil
 }

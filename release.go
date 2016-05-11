@@ -82,6 +82,10 @@ var (
 	promoteAReleaseBucketName = promoteAReleaseCmd.Flag("bucket-name", "Bucket name to use").Required().String()
 	promoteAReleasePlatform   = promoteAReleaseCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
 
+	brokenReleaseCmd        = app.Command("broken-release", "Mark a release as broken")
+	brokenReleaseName       = brokenReleaseCmd.Flag("release", "Release to mark as broken").Required().String()
+	brokenReleaseBucketName = brokenReleaseCmd.Flag("bucket-name", "Bucket name to use").Required().String()
+
 	promoteTestReleasesCmd        = app.Command("promote-test-releases", "Promote test releases")
 	promoteTestReleasesBucketName = promoteTestReleasesCmd.Flag("bucket-name", "Bucket name to use").Required().String()
 	promoteTestReleasesPlatform   = promoteTestReleasesCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
@@ -94,8 +98,9 @@ var (
 	saveLogPath       = saveLogCmd.Flag("path", "File to save").Required().String()
 	saveLogNoErr      = saveLogCmd.Flag("noerr", "No error status on failure").Bool()
 
-	latestCommitCmd  = app.Command("latest-commit", "Latests commit we can use to safely build from")
-	latestCommitRepo = latestCommitCmd.Flag("repo", "Repository name").Required().String()
+	latestCommitCmd      = app.Command("latest-commit", "Latests commit we can use to safely build from")
+	latestCommitRepo     = latestCommitCmd.Flag("repo", "Repository name").Required().String()
+	latestCommitContexts = latestCommitCmd.Flag("context", "Context to check for success").Required().Strings()
 
 	waitForCICmd      = app.Command("wait-ci", "Waits on a the latest commit being successful in CI")
 	waitForCIRepo     = waitForCICmd.Flag("repo", "Repository name").Required().String()
@@ -200,6 +205,11 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+	case brokenReleaseCmd.FullCommand():
+		err := update.ReleaseBroken(*brokenReleaseName, *brokenReleaseBucketName)
+		if err != nil {
+			log.Fatal(err)
+		}
 	case saveLogCmd.FullCommand():
 		url, err := update.SaveLog(*saveLogBucketName, *saveLogPath, 100*1024)
 		if err != nil {
@@ -211,13 +221,7 @@ func main() {
 		}
 		fmt.Fprintf(os.Stdout, "%s\n", url)
 	case latestCommitCmd.FullCommand():
-		// TODO: Pass from command line
-		contexts := map[string]string{
-			"continuous-integration/travis-ci/push":  "success",
-			"continuous-integration/appveyor/branch": "success",
-			"ci/circleci":                            "success",
-		}
-		commit, err := gh.LatestCommit(githubToken(true), *latestCommitRepo, contexts)
+		commit, err := gh.LatestCommit(githubToken(true), *latestCommitRepo, *latestCommitContexts)
 		if err != nil {
 			log.Fatal(err)
 		}

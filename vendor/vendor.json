@@ -18,19 +18,119 @@
 			"revisionTime": "2015-10-22T17:55:26+11:00"
 		},
 		{
+			"path": "github.com/aws/aws-sdk-go/aws",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/aws/awserr",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/aws/awsutil",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/aws/client",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/aws/client/metadata",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/aws/corehandlers",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/aws/credentials",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/aws/defaults",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/aws/ec2metadata",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/aws/request",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/aws/session",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/private/endpoints",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/private/protocol",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/private/protocol/query",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/private/protocol/query/queryutil",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/private/protocol/rest",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/private/protocol/restxml",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/private/protocol/xml/xmlutil",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/private/signer/v4",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/private/waiter",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/service/s3",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
 			"path": "github.com/blang/semver",
 			"revision": "aea32c919a18e5ef4537bbd283ff29594b1b0165",
 			"revisionTime": "2015-12-05T10:49:59+01:00"
-		},
-		{
-			"path": "github.com/goamz/goamz/aws",
-			"revision": "02d5144a587b982e33b95f484a34164ce6923c99",
-			"revisionTime": "2016-04-07T11:34:11+02:00"
-		},
-		{
-			"path": "github.com/goamz/goamz/s3",
-			"revision": "02d5144a587b982e33b95f484a34164ce6923c99",
-			"revisionTime": "2016-04-07T11:34:11+02:00"
 		},
 		{
 			"path": "github.com/vaughan0/go-ini",
