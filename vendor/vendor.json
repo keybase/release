@@ -23,7 +23,102 @@
 			"revisionTime": "2016-05-10T16:13:35-07:00"
 		},
 		{
+			"path": "github.com/aws/aws-sdk-go/aws/awserr",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/aws/awsutil",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/aws/client",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/aws/client/metadata",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/aws/corehandlers",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/aws/credentials",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/aws/defaults",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/aws/ec2metadata",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/aws/request",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
 			"path": "github.com/aws/aws-sdk-go/aws/session",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/private/endpoints",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/private/protocol",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/private/protocol/query",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/private/protocol/query/queryutil",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/private/protocol/rest",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/private/protocol/restxml",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/private/protocol/xml/xmlutil",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/private/signer/v4",
+			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
+			"revisionTime": "2016-05-10T16:13:35-07:00"
+		},
+		{
+			"path": "github.com/aws/aws-sdk-go/private/waiter",
 			"revision": "d621b01e9d7ef5dcecbc323939ed97f9862cd6fd",
 			"revisionTime": "2016-05-10T16:13:35-07:00"
 		},
