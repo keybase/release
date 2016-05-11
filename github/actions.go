@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"time"
 )
 
 func CreateRelease(token string, repo string, tag string, name string) error {
@@ -133,4 +134,72 @@ func Download(token string, url string, name string) error {
 		return fmt.Errorf("downloaded data did not match content length %d != %d", contentLength, n)
 	}
 	return err
+}
+
+// LatestCommit returns a latest commit for all statuses matching state and contexts
+func LatestCommit(token string, repo string, contexts map[string]string) (*Commit, error) {
+	commits, err := Commits("keybase", repo, token)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, commit := range commits {
+		statuses, err := Statuses("keybase", repo, commit.SHA, token)
+		if err != nil {
+			return nil, err
+		}
+		matching := map[string]Status{}
+		for _, status := range statuses {
+			if contexts[status.Context] == status.State {
+				matching[status.Context] = status
+			}
+		}
+		// If we match all contexts then we've found the commit
+		if len(contexts) == len(matching) {
+			return &commit, nil
+		}
+	}
+	return nil, nil
+}
+
+func stringInSlice(str string, list []string) bool {
+	for _, s := range list {
+		if s == str {
+			return true
+		}
+	}
+	return false
+}
+
+// WaitForCI waits for commit in repo to pass CI contexts
+func WaitForCI(token string, repo string, commit string, contexts []string, delay time.Duration, timeout time.Duration) error {
+	start := time.Now()
+	for time.Since(start) < timeout {
+		log.Printf("Checking status for %s (%s)", contexts, commit)
+		statuses, err := Statuses("keybase", repo, commit, token)
+		if err != nil {
+			return err
+		}
+		matching := map[string]Status{}
+		for _, status := range statuses {
+			if stringInSlice(status.Context, contexts) {
+				switch status.State {
+				case "failure":
+					log.Printf("%s (failure)", status.Context)
+					return fmt.Errorf("Failure in CI for %s", status.Context)
+				case "success":
+					log.Printf("%s (success)", status.Context)
+					matching[status.Context] = status
+				}
+			}
+		}
+		// If we match all contexts then we've passed
+		if len(contexts) == len(matching) {
+			return nil
+		}
+
+		log.Printf("Waiting %s", delay)
+		time.Sleep(delay)
+	}
+	return fmt.Errorf("Timed out")
 }
