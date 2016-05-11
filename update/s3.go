@@ -9,6 +9,8 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -593,4 +595,41 @@ func PromoteReleases(bucketName string, platform string) error {
 		log.Printf("Promoting releases is unsupported for windows")
 	}
 	return nil
+}
+
+// SaveLog saves log to S3 bucket (last maxNumBytes) and returns the URL.
+// The log is publicly readable on S3 but the url is not discoverable.
+func SaveLog(bucketName string, localPath string, maxNumBytes int64) (string, error) {
+	client, err := NewClient()
+	if err != nil {
+		return "", err
+	}
+
+	file, err := os.Open(localPath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	bytes := make([]byte, maxNumBytes)
+	stat, err := os.Stat(localPath)
+	start := stat.Size() - maxNumBytes
+	_, err = file.ReadAt(bytes, start)
+	if err != nil {
+		return "", err
+	}
+
+	filename := filepath.Base(localPath)
+	logID, err := RandomID()
+	if err != nil {
+		return "", err
+	}
+	uploadDest := filepath.Join("logs", fmt.Sprintf("%s-%s%s", filename, logID, ".txt"))
+	bucket := client.s3.Bucket(bucketName)
+	url := urlStringNoEscape(bucketName, uploadDest)
+	log.Printf("Uploading to %s", url)
+	if putErr := bucket.Put(uploadDest, bytes, "text/plain", s3.PublicRead, s3.Options{}); putErr != nil {
+		return "", putErr
+	}
+	return url, nil
 }
