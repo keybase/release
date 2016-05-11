@@ -655,7 +655,7 @@ func ReleaseBroken(releaseName string, bucketName string) error {
 	}
 
 	found := false
-	for _, platform := range platformsAll {
+	for _, platform := range []Platform{platformDarwin} {
 		release, err := platform.FindRelease(bucketName, func(r Release) bool {
 			return releaseName == r.Version
 		})
