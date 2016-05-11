@@ -9,6 +9,8 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -695,4 +697,50 @@ func ReleaseBroken(releaseName string, bucketName string) error {
 		return fmt.Errorf("No release found: %s", releaseName)
 	}
 	return nil
+}
+
+// SaveLog saves log to S3 bucket (last maxNumBytes) and returns the URL.
+// The log is publicly readable on S3 but the url is not discoverable.
+func SaveLog(bucketName string, localPath string, maxNumBytes int64) (string, error) {
+	client, err := NewClient()
+	if err != nil {
+		return "", err
+	}
+
+	file, err := os.Open(localPath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	data := make([]byte, maxNumBytes)
+	stat, err := os.Stat(localPath)
+	start := stat.Size() - maxNumBytes
+	_, err = file.ReadAt(data, start)
+	if err != nil {
+		return "", err
+	}
+
+	filename := filepath.Base(localPath)
+	logID, err := RandomID()
+	if err != nil {
+		return "", err
+	}
+	uploadDest := filepath.Join("logs", fmt.Sprintf("%s-%s%s", filename, logID, ".txt"))
+
+	_, err = client.svc.PutObject(&s3.PutObjectInput{
+		Bucket:        aws.String(bucketName),
+		Key:           aws.String(uploadDest),
+		CacheControl:  aws.String(defaultCacheControl),
+		ACL:           aws.String("public-read"),
+		Body:          bytes.NewReader(data),
+		ContentLength: aws.Int64(int64(len(data))),
+		ContentType:   aws.String("text/plain"),
+	})
+	if err != nil {
+		return "", err
+	}
+
+	url := urlStringNoEscape(bucketName, uploadDest)
+	return url, nil
 }
