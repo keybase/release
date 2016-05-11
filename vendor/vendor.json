@@ -133,9 +133,14 @@
 			"revisionTime": "2015-12-05T10:49:59+01:00"
 		},
 		{
-			"path": "github.com/vaughan0/go-ini",
-			"revision": "a98ad7ee00ec53921f08832bc06ecf7fd600e6a1",
-			"revisionTime": "2013-09-23T16:52:12+02:00"
+			"path": "github.com/go-ini/ini",
+			"revision": "12f418cc7edc5a618a51407b7ac1f1f512139df3",
+			"revisionTime": "2016-03-21T19:18:31-04:00"
+		},
+		{
+			"path": "github.com/jmespath/go-jmespath",
+			"revision": "0b12d6b521d83fc7f755e7cfc1b1fbdd35a01a74",
+			"revisionTime": "2016-02-02T10:50:14-08:00"
 		},
 		{
 			"path": "gopkg.in/alecthomas/kingpin.v2",
