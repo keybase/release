@@ -187,14 +187,20 @@ func WaitForCI(token string, repo string, commit string, contexts []string, dela
 		if err != nil {
 			return err
 		}
+		const success = "success"
+		const failure = "failure"
 		matching := map[string]Status{}
 		for _, status := range statuses {
 			if stringInSlice(status.Context, contexts) {
 				switch status.State {
-				case "failure":
-					log.Printf("%s (failure)", status.Context)
-					return fmt.Errorf("Failure in CI for %s", status.Context)
-				case "success":
+				case failure:
+					if matching[status.Context].State != success {
+						log.Printf("%s (failure)", status.Context)
+						return fmt.Errorf("Failure in CI for %s", status.Context)
+					} else {
+						log.Printf("%s (ignoring previous failure)", status.Context)
+					}
+				case success:
 					log.Printf("%s (success)", status.Context)
 					matching[status.Context] = status
 				}
