@@ -691,7 +691,7 @@ func SaveLog(bucketName string, localPath string, maxNumBytes int64) (string, er
 
 	file, err := os.Open(localPath)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("Error opening: %s", err)
 	}
 	defer file.Close()
 
@@ -700,7 +700,7 @@ func SaveLog(bucketName string, localPath string, maxNumBytes int64) (string, er
 	start := stat.Size() - maxNumBytes
 	_, err = file.ReadAt(data, start)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("Error reading: %s", err)
 	}
 
 	filename := filepath.Base(localPath)
