@@ -695,8 +695,15 @@ func SaveLog(bucketName string, localPath string, maxNumBytes int64) (string, er
 	}
 	defer file.Close()
 
-	data := make([]byte, maxNumBytes)
 	stat, err := os.Stat(localPath)
+	if err != nil {
+		return "", fmt.Errorf("Error in stat: %s", err)
+	}
+	if maxNumBytes > stat.Size() {
+		maxNumBytes = stat.Size()
+	}
+
+	data := make([]byte, maxNumBytes)
 	start := stat.Size() - maxNumBytes
 	_, err = file.ReadAt(data, start)
 	if err != nil {
