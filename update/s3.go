@@ -298,33 +298,16 @@ func (p *Platform) FindRelease(bucketName string, f func(r Release) bool) (*Rele
 }
 
 // Files returns all files associated with this platforms release
-func (p Platform) Files(release Release) []string {
+func (p Platform) Files(releaseName string) ([]string, error) {
 	switch p.Name {
 	case PlatformTypeDarwin:
 		return []string{
-			fmt.Sprintf("darwin/Keybase-%s.dmg", release.Version),
-			fmt.Sprintf("darwin-updates/Keybase-%s.zip", release.Version),
-			fmt.Sprintf("darwin-support/update-darwin-prod-%s.json", release.Version),
-		}
-	case "deb":
-		return []string{
-			// TODO: Get full file list from jack
-			fmt.Sprintf("linux_binaries/deb/keybase_%s_i386.deb", release.Version),
-			fmt.Sprintf("linux_binaries/deb/keybase_%s_amd64.deb", release.Version),
-		}
-	case "rpm":
-		return []string{
-			// TODO: Get full file list from jack
-			fmt.Sprintf("linux_binaries/rpm/keybase-%s-1.x86_64.rpm", release.Version),
-			fmt.Sprintf("linux_binaries/rpm/keybase-%s-1.i386.rpm", release.Version),
-		}
-	case PlatformTypeWindows:
-		return []string{
-			fmt.Sprintf("windows/keybase_setup_gui_%s_386.exe", release.Version),
-			fmt.Sprintf("windows-updates/keybase_setup_gui_%s_386.exe", release.Version),
-		}
+			fmt.Sprintf("darwin/Keybase-%s.dmg", releaseName),
+			fmt.Sprintf("darwin-updates/Keybase-%s.zip", releaseName),
+			fmt.Sprintf("darwin-support/update-darwin-prod-%s.json", releaseName),
+		}, nil
 	default:
-		return []string{}
+		return nil, fmt.Errorf("Unsupported for this platform: %s", p.Name)
 	}
 }
 
@@ -649,27 +632,24 @@ func PromoteReleases(bucketName string, platform string) error {
 	return nil
 }
 
-// ReleaseBroken marks a release as broken
-func ReleaseBroken(releaseName string, bucketName string) error {
+// ReleaseBroken marks a release as broken. The releaseName is the version,
+// for example, 1.2.3+400-deadbeef.
+func ReleaseBroken(releaseName string, bucketName string, platformName string) ([]string, error) {
 	client, err := NewClient()
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	found := false
-	for _, platform := range []Platform{platformDarwin} {
-		release, err := platform.FindRelease(bucketName, func(r Release) bool {
-			return releaseName == r.Version
-		})
+	platforms, err := Platforms(platformName)
+	if err != nil {
+		return nil, err
+	}
+	removed := []string{}
+	for _, platform := range platforms {
+		files, err := platform.Files(releaseName)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if release == nil {
-			continue
-		}
-		found = true
-		log.Printf("Found release: %#v", release)
-		for _, path := range platform.Files(*release) {
+		for _, path := range files {
 			sourceURL := urlString(bucketName, "", path)
 			brokenPath := fmt.Sprintf("broken/%s", path)
 			log.Printf("Copying %s to %s", sourceURL, brokenPath)
@@ -687,16 +667,18 @@ func ReleaseBroken(releaseName string, bucketName string) error {
 			}
 
 			log.Printf("Deleting: %s", path)
-			if _, err := client.svc.DeleteObject(&s3.DeleteObjectInput{Bucket: aws.String(bucketName), Key: aws.String(path)}); err != nil {
-				return err
+			_, err = client.svc.DeleteObject(&s3.DeleteObjectInput{Bucket: aws.String(bucketName), Key: aws.String(path)})
+			if err != nil {
+				return removed, err
 			}
+			removed = append(removed, path)
 		}
-		log.Printf("Removed files for %s", release.Version)
 	}
-	if !found {
-		return fmt.Errorf("No release found: %s", releaseName)
+	log.Printf("Deleted %d files for %s", len(removed), releaseName)
+	if len(removed) == 0 {
+		return removed, fmt.Errorf("No files to remove for %s", releaseName)
 	}
-	return nil
+	return removed, nil
 }
 
 // SaveLog saves log to S3 bucket (last maxNumBytes) and returns the URL.
