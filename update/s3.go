@@ -83,7 +83,7 @@ func loadReleases(objects []*s3.Object, bucketName string, prefix string, suffix
 	var releases []Release
 	for _, obj := range objects {
 		if strings.HasSuffix(*obj.Key, suffix) {
-			_, name := urlStringForKey(*obj.Key, bucketName, prefix)
+			urlString, name := urlStringForKey(*obj.Key, bucketName, prefix)
 			if name == "index.html" {
 				continue
 			}
@@ -96,6 +96,7 @@ func loadReleases(objects []*s3.Object, bucketName string, prefix string, suffix
 				Release{
 					Name:       name,
 					Key:        *obj.Key,
+					URL:        urlString,
 					Version:    version,
 					Date:       date,
 					DateString: date.Format("Mon Jan _2 15:04:05 MST 2006"),
