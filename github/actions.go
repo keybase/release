@@ -201,7 +201,6 @@ func WaitForCI(token string, repo string, commit string, contexts []string, dela
 		// 		log.Printf("\t%s (%s)", status.Context, status.State)
 		// 	}
 		// }
-		log.Printf("Looking for success/failure:")
 		for _, status := range statuses {
 			if stringInSlice(status.Context, contexts) {
 				switch status.State {
