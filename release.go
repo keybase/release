@@ -107,8 +107,8 @@ var (
 	waitForCIRepo     = waitForCICmd.Flag("repo", "Repository name").Required().String()
 	waitForCICommit   = waitForCICmd.Flag("commit", "Commit").Required().String()
 	waitForCIContexts = waitForCICmd.Flag("context", "Context to check for success").Required().Strings()
-	waitForCIDelay    = waitForCICmd.Flag("delay", "Delay between checks").Default("30s").Duration()
-	waitForCITimeout  = waitForCICmd.Flag("timeout", "Delay between checks").Default("30m").Duration()
+	waitForCIDelay    = waitForCICmd.Flag("delay", "Delay between checks").Default("1m").Duration()
+	waitForCITimeout  = waitForCICmd.Flag("timeout", "Delay between checks").Default("1h").Duration()
 )
 
 func main() {
