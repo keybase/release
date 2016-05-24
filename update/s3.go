@@ -312,6 +312,11 @@ func (p Platform) Files(releaseName string) ([]string, error) {
 	}
 }
 
+// WriteHTML will generate index.html for the platform
+func (p Platform) WriteHTML(bucketName string) error {
+	return WriteHTML(bucketName, p.Prefix, "", "", p.Prefix+"/index.html")
+}
+
 // CopyLatest copies latest release to a fixed path for the Client
 func (c *Client) CopyLatest(bucketName string, platform string) error {
 	platforms, err := Platforms(platform)
@@ -667,11 +672,14 @@ func ReleaseBroken(releaseName string, bucketName string, platformName string) (
 			}
 			removed = append(removed, path)
 		}
+
+		_ = platform.WriteHTML(bucketName)
 	}
 	log.Printf("Deleted %d files for %s", len(removed), releaseName)
 	if len(removed) == 0 {
 		return removed, fmt.Errorf("No files to remove for %s", releaseName)
 	}
+
 	return removed, nil
 }
 
