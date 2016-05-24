@@ -6,19 +6,21 @@ package github
 import "fmt"
 
 const (
-	TagListPath = "/repos/%s/%s/tags"
+	tagListPath = "/repos/%s/%s/tags"
 )
 
+// Tag is a Github API Tag type
 type Tag struct {
 	Name string `json:"name"`
 }
 
+// Tags returns tags for a repo
 func Tags(user, repo, token string) (tags []Tag, err error) {
-	u, err := githubURL(GithubAPIURL, token)
+	u, err := githubURL(githubAPIURL, token)
 	if err != nil {
 		return nil, err
 	}
-	u.Path = fmt.Sprintf(TagListPath, user, repo)
+	u.Path = fmt.Sprintf(tagListPath, user, repo)
 	err = Get(u.String(), &tags)
 	if err != nil {
 		return
@@ -26,6 +28,7 @@ func Tags(user, repo, token string) (tags []Tag, err error) {
 	return
 }
 
+// LatestTag returns latest tag for a repo
 func LatestTag(user, repo, token string) (tag *Tag, err error) {
 	tags, err := Tags(user, repo, token)
 	if err != nil {

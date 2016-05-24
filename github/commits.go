@@ -16,7 +16,7 @@ const (
 
 // Commits lists commits from Github repo
 func Commits(user, repo, token string) ([]Commit, error) {
-	url, err := githubURL(GithubAPIURL, token)
+	url, err := githubURL(githubAPIURL, token)
 	if err != nil {
 		return nil, err
 	}

@@ -18,7 +18,7 @@ import (
 )
 
 // EncodeJSON returns JSON (as bytes) for an update
-func EncodeJSON(version string, name string, description string, src string, URI *url.URL, signature string) ([]byte, error) {
+func EncodeJSON(version string, name string, description string, src string, URI fmt.Stringer, signature string) ([]byte, error) {
 	update := Update{
 		Version:     version,
 		Description: description,
@@ -73,7 +73,7 @@ func EncodeJSON(version string, name string, description string, src string, URI
 }
 
 // DecodeJSON returns an update object from JSON (bytes)
-func DecodeJSON(r io.ReadCloser) (*Update, error) {
+func DecodeJSON(r io.Reader) (*Update, error) {
 	var obj Update
 	if err := json.NewDecoder(r).Decode(&obj); err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func readFile(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer sigFile.Close()
+	defer func() { _ = sigFile.Close() }()
 	data, err := ioutil.ReadAll(sigFile)
 	if err != nil {
 		return "", err
@@ -100,7 +100,7 @@ func digest(p string) (digest string, err error) {
 	if err != nil {
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	if _, ioerr := io.Copy(hasher, f); ioerr != nil {
 		err = ioerr
 		return

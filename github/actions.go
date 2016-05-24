@@ -16,6 +16,7 @@ import (
 	"time"
 )
 
+// CreateRelease creates a release for a tag
 func CreateRelease(token string, repo string, tag string, name string) error {
 	params := ReleaseCreate{
 		TagName: tag,
@@ -29,9 +30,9 @@ func CreateRelease(token string, repo string, tag string, name string) error {
 	reader := bytes.NewReader(payload)
 
 	uri := fmt.Sprintf("/repos/keybase/%s/releases", repo)
-	resp, err := DoAuthRequest("POST", GithubAPIURL+uri, "application/json", token, nil, reader)
+	resp, err := DoAuthRequest("POST", githubAPIURL+uri, "application/json", token, nil, reader)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 	}
 	if err != nil {
 		return fmt.Errorf("while submitting %v, %v", string(payload), err)
@@ -46,6 +47,7 @@ func CreateRelease(token string, repo string, tag string, name string) error {
 	return nil
 }
 
+// Upload uploads a file to a tagged repo
 func Upload(token string, repo string, tag string, name string, file string) error {
 	release, err := ReleaseOfTag("keybase", repo, tag, token)
 	if err != nil {
@@ -60,7 +62,7 @@ func Upload(token string, repo string, tag string, name string, file string) err
 	}
 	resp, err := DoAuthRequest("POST", url, "application/octet-stream", token, nil, osfile)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 	}
 	if err != nil {
 		return err
@@ -75,13 +77,15 @@ func Upload(token string, repo string, tag string, name string, file string) err
 	return nil
 }
 
+// DownloadSource dowloads source from repo tag
 func DownloadSource(token string, repo string, tag string) error {
-	url := GithubAPIURL + fmt.Sprintf("/repos/keybase/%s/tarball/%s", repo, tag)
+	url := githubAPIURL + fmt.Sprintf("/repos/keybase/%s/tarball/%s", repo, tag)
 	name := fmt.Sprintf("%s-%s.tar.gz", repo, tag)
 	log.Printf("Url: %s", url)
 	return Download(token, url, name)
 }
 
+// DownloadAsset downloads an asset from Github that matches name
 func DownloadAsset(token string, repo string, tag string, name string) error {
 	release, err := ReleaseOfTag("keybase", repo, tag, token)
 	if err != nil {
@@ -99,16 +103,17 @@ func DownloadAsset(token string, repo string, tag string, name string) error {
 		return fmt.Errorf("could not find asset named %s", name)
 	}
 
-	url := GithubAPIURL + fmt.Sprintf(AssetDownloadURI, "keybase", repo, assetID)
+	url := githubAPIURL + fmt.Sprintf(assetDownloadURI, "keybase", repo, assetID)
 	return Download(token, url, name)
 }
 
+// Download from Github
 func Download(token string, url string, name string) error {
 	resp, err := DoAuthRequest("GET", url, "", token, map[string]string{
 		"Accept": "application/octet-stream",
 	}, nil)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 	}
 	if err != nil {
 		return fmt.Errorf("could not fetch releases, %v", err)
@@ -127,7 +132,7 @@ func Download(token string, url string, name string) error {
 	if err != nil {
 		return fmt.Errorf("could not create file %s", name)
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 
 	n, err := io.Copy(out, resp.Body)
 	if n != contentLength {
@@ -190,12 +195,12 @@ func WaitForCI(token string, repo string, commit string, contexts []string, dela
 		const success = "success"
 		const failure = "failure"
 		matching := map[string]Status{}
-		log.Printf("CI Status:")
-		for _, status := range statuses {
-			if stringInSlice(status.Context, contexts) {
-				log.Printf("\t%s (%s)", status.Context, status.State)
-			}
-		}
+		// log.Printf("CI Status:")
+		// for _, status := range statuses {
+		// 	if stringInSlice(status.Context, contexts) {
+		// 		log.Printf("\t%s (%s)", status.Context, status.State)
+		// 	}
+		// }
 		log.Printf("Looking for success/failure:")
 		for _, status := range statuses {
 			if stringInSlice(status.Context, contexts) {

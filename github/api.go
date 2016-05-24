@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	GithubAPIURL = "https://api.github.com"
+	githubAPIURL = "https://api.github.com"
 )
 
 func githubURL(host string, token string) (u *url.URL, err error) {
@@ -49,15 +49,15 @@ func materializeFile(f *os.File) (io.Reader, int64, error) {
 	// predefined length, it's read entirely into a byte buffer.
 	if fi.Mode()&(os.ModeCharDevice|os.ModeNamedPipe) == 1 {
 		var buf bytes.Buffer
-		n, err := buf.ReadFrom(f)
-		if err != nil {
-			return nil, 0, errors.New("req: could not buffer up input stream: " + err.Error())
+		n, readErr := buf.ReadFrom(f)
+		if readErr != nil {
+			return nil, 0, errors.New("req: could not buffer up input stream: " + readErr.Error())
 		}
-		return &buf, n, err
+		return &buf, n, readErr
 	}
 
 	// We know the os.File is most likely an actual file now.
-	n, err := GetFileSize(f)
+	n, err := getFileSize(f)
 	return f, n, err
 }
 
@@ -94,6 +94,7 @@ func NewAuthRequest(method, url, bodyType, token string, headers map[string]stri
 	return req, nil
 }
 
+// DoAuthRequest does an authenticated request to Github
 func DoAuthRequest(method, url, bodyType, token string, headers map[string]string, body io.Reader) (*http.Response, error) {
 	req, err := NewAuthRequest(method, url, bodyType, token, headers, body)
 	if err != nil {
@@ -108,10 +109,11 @@ func DoAuthRequest(method, url, bodyType, token string, headers map[string]strin
 	return resp, nil
 }
 
+// Get does a GET request to the Github API
 func Get(url string, v interface{}) error {
 	resp, err := http.Get(url)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 	}
 	if err != nil {
 		return fmt.Errorf("could not fetch releases, %v", err)

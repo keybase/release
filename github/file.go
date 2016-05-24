@@ -4,10 +4,11 @@ package github
 
 import (
 	"fmt"
+	"io"
 	"os"
 )
 
-func GetFileSize(f *os.File) (int64, error) {
+func getFileSize(f *os.File) (int64, error) {
 	/* first try stat */
 	off, err := fsizeStat(f)
 	if err != nil {
@@ -28,7 +29,7 @@ func fsizeStat(f *os.File) (int64, error) {
 	return fi.Size(), nil
 }
 
-func fsizeSeek(f *os.File) (int64, error) {
+func fsizeSeek(f io.Seeker) (int64, error) {
 	off, err := f.Seek(0, 2)
 	if err != nil {
 		return 0, fmt.Errorf("seeking did not work, stdin is not" +

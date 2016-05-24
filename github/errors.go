@@ -2,6 +2,7 @@ package github
 
 import "fmt"
 
+// ErrNotFound is error type for not found in API
 type ErrNotFound struct {
 	Name  string
 	Key   string

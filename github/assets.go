@@ -7,9 +7,10 @@ import (
 )
 
 const (
-	AssetDownloadURI = "/repos/%s/%s/releases/assets/%d"
+	assetDownloadURI = "/repos/%s/%s/releases/assets/%d"
 )
 
+// Asset is a Github API Asset
 type Asset struct {
 	URL                string    `json:"url"`
 	ID                 int       `json:"id"`

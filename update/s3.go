@@ -386,7 +386,7 @@ func (c *Client) CurrentUpdate(bucketName string, channel string, platformName s
 	if err != nil {
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	currentUpdate, err = DecodeJSON(resp.Body)
 	return
 }
@@ -429,10 +429,7 @@ func PromoteARelease(releaseName string, bucketName string, platform string) err
 func (c *Client) promoteDarwinReleaseToProd(releaseName string, bucketName string, platform Platform, env string) error {
 	releaseName = fmt.Sprintf("Keybase-%s.dmg", releaseName)
 	release, err := platform.FindRelease(bucketName, func(r Release) bool {
-		if r.Name == releaseName {
-			return true
-		}
-		return false
+		return r.Name == releaseName
 	})
 	if err != nil {
 		return err
@@ -453,10 +450,7 @@ func (c *Client) promoteDarwinReleaseToProd(releaseName string, bucketName strin
 		CacheControl: aws.String(defaultCacheControl),
 		ACL:          aws.String("public-read"),
 	})
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // PromoteRelease promotes a test release to the public
@@ -549,7 +543,7 @@ func copyUpdateJSON(bucketName string, channel string, platformName string, env 
 	return err
 }
 
-func (c *Client) report(tw *tabwriter.Writer, bucketName string, channel string, platformName string) {
+func (c *Client) report(tw io.Writer, bucketName string, channel string, platformName string) {
 	update, _, err := c.CurrentUpdate(bucketName, channel, platformName, "prod")
 	if channel == "" {
 		channel = "public"
@@ -583,8 +577,7 @@ func Report(bucketName string, writer io.Writer) error {
 	client.report(tw, bucketName, "", PlatformTypeLinux)
 	client.report(tw, bucketName, "test", PlatformTypeWindows)
 	client.report(tw, bucketName, "", PlatformTypeWindows)
-	tw.Flush()
-	return nil
+	return tw.Flush()
 }
 
 func promoteTestReleaseForDarwin(bucketName string) (*Release, error) {
@@ -694,7 +687,7 @@ func SaveLog(bucketName string, localPath string, maxNumBytes int64) (string, er
 	if err != nil {
 		return "", fmt.Errorf("Error opening: %s", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	stat, err := os.Stat(localPath)
 	if err != nil {

@@ -17,7 +17,7 @@ const (
 
 // Statuses lists statuses for a git commit
 func Statuses(user, repo, sha, token string) ([]Status, error) {
-	url, err := githubURL(GithubAPIURL, token)
+	url, err := githubURL(githubAPIURL, token)
 	if err != nil {
 		return nil, err
 	}
