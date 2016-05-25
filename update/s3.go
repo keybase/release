@@ -491,7 +491,7 @@ func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHo
 		log.Printf("Error looking for current update: %s (%s)", err, platform.Name)
 	}
 	if currentUpdate != nil {
-		log.Printf("Found update: %s", currentUpdate.Version)
+		log.Printf("Found current update: %s", currentUpdate.Version)
 		var currentVer semver.Version
 		currentVer, err = semver.Make(currentUpdate.Version)
 		if err != nil {
@@ -506,9 +506,12 @@ func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHo
 		if releaseVer.Equals(currentVer) {
 			log.Printf("Release unchanged")
 			return nil, nil
-		} else if !allowDowngrade && releaseVer.LT(currentVer) {
-			log.Printf("Release older than current update")
-			return nil, nil
+		} else if releaseVer.LT(currentVer) {
+			if !allowDowngrade {
+				log.Printf("Release older than current update")
+				return nil, nil
+			}
+			log.Printf("Allowing downgrade")
 		}
 	}
 
