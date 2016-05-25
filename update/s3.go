@@ -396,12 +396,12 @@ func (c *Client) CurrentUpdate(bucketName string, channel string, platformName s
 	return
 }
 
-func promoteRelease(bucketName string, delay time.Duration, hourEastern int, channel string, platform Platform, env string) (*Release, error) {
+func promoteRelease(bucketName string, delay time.Duration, hourEastern int, channel string, platform Platform, env string, allowDowngrade bool) (*Release, error) {
 	client, err := NewClient()
 	if err != nil {
 		return nil, err
 	}
-	return client.PromoteRelease(bucketName, delay, hourEastern, channel, platform, env)
+	return client.PromoteRelease(bucketName, delay, hourEastern, channel, platform, env, allowDowngrade)
 }
 
 func updateJSONName(channel string, platformName string, env string) string {
@@ -459,7 +459,7 @@ func (c *Client) promoteDarwinReleaseToProd(releaseName string, bucketName strin
 }
 
 // PromoteRelease promotes a test release to the public
-func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHourEastern int, channel string, platform Platform, env string) (*Release, error) {
+func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHourEastern int, channel string, platform Platform, env string, allowDowngrade bool) (*Release, error) {
 	if channel == "" {
 		log.Printf("Finding release to promote (%s delay, < %dam)", delay, beforeHourEastern)
 	} else {
@@ -506,7 +506,7 @@ func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHo
 		if releaseVer.Equals(currentVer) {
 			log.Printf("Release unchanged")
 			return nil, nil
-		} else if releaseVer.LT(currentVer) {
+		} else if !allowDowngrade && releaseVer.LT(currentVer) {
 			log.Printf("Release older than current update")
 			return nil, nil
 		}
@@ -586,7 +586,7 @@ func Report(bucketName string, writer io.Writer) error {
 }
 
 func promoteTestReleaseForDarwin(bucketName string) (*Release, error) {
-	return promoteRelease(bucketName, time.Duration(0), 0, "test", platformDarwin, "prod")
+	return promoteRelease(bucketName, time.Duration(0), 0, "test", platformDarwin, "prod", true)
 }
 
 func promoteTestReleaseForLinux(bucketName string) error {
@@ -598,8 +598,8 @@ func promoteTestReleaseForWindows(bucketName string) error {
 }
 
 // PromoteTestReleases promotes test releases for a platform
-func PromoteTestReleases(bucketName string, platform string) error {
-	switch platform {
+func PromoteTestReleases(bucketName string, platformName string) error {
+	switch platformName {
 	case PlatformTypeDarwin:
 		_, err := promoteTestReleaseForDarwin(bucketName)
 		return err
@@ -608,7 +608,7 @@ func PromoteTestReleases(bucketName string, platform string) error {
 	case PlatformTypeWindows:
 		return promoteTestReleaseForWindows(bucketName)
 	default:
-		return fmt.Errorf("Invalid platform %s", platform)
+		return fmt.Errorf("Invalid platform %s", platformName)
 	}
 }
 
@@ -616,7 +616,7 @@ func PromoteTestReleases(bucketName string, platform string) error {
 func PromoteReleases(bucketName string, platform string) error {
 	switch platform {
 	case PlatformTypeDarwin:
-		release, err := promoteRelease(bucketName, time.Hour*27, 10, "", platformDarwin, "prod")
+		release, err := promoteRelease(bucketName, time.Hour*27, 10, "", platformDarwin, "prod", false)
 		if err != nil {
 			return err
 		}
@@ -673,7 +673,15 @@ func ReleaseBroken(releaseName string, bucketName string, platformName string) (
 			removed = append(removed, path)
 		}
 
-		_ = platform.WriteHTML(bucketName)
+		// Update html for platform
+		if err := platform.WriteHTML(bucketName); err != nil {
+			log.Printf("Error updating html: %s", err)
+		}
+
+		// Fix test releases if needed
+		if err := PromoteTestReleases(bucketName, platform.Name); err != nil {
+			log.Printf("Error fixing test releases: %s", err)
+		}
 	}
 	log.Printf("Deleted %d files for %s", len(removed), releaseName)
 	if len(removed) == 0 {
