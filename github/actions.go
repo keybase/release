@@ -195,11 +195,8 @@ func WaitForCI(token string, repo string, commit string, contexts []string, dela
 		const success = "success"
 		const failure = "failure"
 		matching := map[string]Status{}
-		// log.Printf("CI Status:")
 		// for _, status := range statuses {
-		// 	if stringInSlice(status.Context, contexts) {
-		// 		log.Printf("\t%s (%s)", status.Context, status.State)
-		// 	}
+		// 	log.Printf("\t%s (%s)", status.Context, status.State)
 		// }
 		for _, status := range statuses {
 			if stringInSlice(status.Context, contexts) {
