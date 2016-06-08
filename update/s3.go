@@ -591,11 +591,13 @@ func promoteTestReleaseForDarwin(bucketName string) (*Release, error) {
 
 // promoteTestReleaseForLinux creates a test release for linux
 func promoteTestReleaseForLinux(bucketName string) error {
+	// This just copies public to test since we don't do promotion on this platform yet
 	return copyUpdateJSON(bucketName, "", "test", PlatformTypeLinux, "prod")
 }
 
 // promoteTestReleaseForWindows creates a test release for windows
 func promoteTestReleaseForWindows(bucketName string) error {
+	// This just copies public to test since we don't do promotion on this platform yet
 	return copyUpdateJSON(bucketName, "", "test", PlatformTypeWindows, "prod")
 }
 
