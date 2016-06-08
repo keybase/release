@@ -396,12 +396,12 @@ func (c *Client) CurrentUpdate(bucketName string, channel string, platformName s
 	return
 }
 
-func promoteRelease(bucketName string, delay time.Duration, hourEastern int, channel string, platform Platform, env string, allowDowngrade bool) (*Release, error) {
+func promoteRelease(bucketName string, delay time.Duration, hourEastern int, toChannel string, platform Platform, env string, allowDowngrade bool) (*Release, error) {
 	client, err := NewClient()
 	if err != nil {
 		return nil, err
 	}
-	return client.PromoteRelease(bucketName, delay, hourEastern, channel, platform, env, allowDowngrade)
+	return client.PromoteRelease(bucketName, delay, hourEastern, toChannel, platform, env, allowDowngrade)
 }
 
 func updateJSONName(channel string, platformName string, env string) string {
@@ -458,13 +458,9 @@ func (c *Client) promoteDarwinReleaseToProd(releaseName string, bucketName strin
 	return err
 }
 
-// PromoteRelease promotes a test release to the public
-func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHourEastern int, channel string, platform Platform, env string, allowDowngrade bool) (*Release, error) {
-	if channel == "" {
-		log.Printf("Finding release to promote (%s delay, < %dam)", delay, beforeHourEastern)
-	} else {
-		log.Printf("Finding release to promote for %s channel (%s delay)", channel, delay)
-	}
+// PromoteRelease promotes a release to a channel
+func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHourEastern int, toChannel string, platform Platform, env string, allowDowngrade bool) (*Release, error) {
+	log.Printf("Finding release to promote to %q (%s delay)", toChannel, delay)
 	release, err := platform.FindRelease(bucketName, func(r Release) bool {
 		log.Printf("Checking release date %s", r.Date)
 		if delay != 0 && time.Since(r.Date) < delay {
@@ -486,7 +482,7 @@ func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHo
 	}
 	log.Printf("Found release %s (%s), %s", release.Name, time.Since(release.Date), release.Version)
 
-	currentUpdate, _, err := c.CurrentUpdate(bucketName, channel, platform.Name, env)
+	currentUpdate, _, err := c.CurrentUpdate(bucketName, toChannel, platform.Name, env)
 	if err != nil {
 		log.Printf("Error looking for current update: %s (%s)", err, platform.Name)
 	}
@@ -515,8 +511,8 @@ func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHo
 		}
 	}
 
-	jsonName := updateJSONName(channel, platform.Name, env)
 	jsonURL := urlString(bucketName, platform.PrefixSupport, fmt.Sprintf("update-%s-%s-%s.json", platform.Name, env, release.Version))
+	jsonName := updateJSONName(toChannel, platform.Name, env)
 	log.Printf("PutCopying %s to %s\n", jsonURL, jsonName)
 	_, err = c.svc.CopyObject(&s3.CopyObjectInput{
 		Bucket:       aws.String(bucketName),
@@ -532,13 +528,13 @@ func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHo
 	return release, nil
 }
 
-func copyUpdateJSON(bucketName string, channel string, platformName string, env string) error {
+func copyUpdateJSON(bucketName string, fromChannel string, toChannel string, platformName string, env string) error {
 	client, err := NewClient()
 	if err != nil {
 		return err
 	}
-	jsonNameDest := updateJSONName(channel, platformName, env)
-	jsonURLSource := urlString(bucketName, "", updateJSONName("", platformName, env))
+	jsonNameDest := updateJSONName(toChannel, platformName, env)
+	jsonURLSource := urlString(bucketName, "", updateJSONName(fromChannel, platformName, env))
 
 	log.Printf("PutCopying %s to %s\n", jsonURLSource, jsonNameDest)
 	_, err = client.svc.CopyObject(&s3.CopyObjectInput{
@@ -588,19 +584,22 @@ func Report(bucketName string, writer io.Writer) error {
 	return tw.Flush()
 }
 
+// promoteTestReleaseForDarwin creates a test release for darwin
 func promoteTestReleaseForDarwin(bucketName string) (*Release, error) {
 	return promoteRelease(bucketName, time.Duration(0), 0, "test", platformDarwin, "prod", true)
 }
 
+// promoteTestReleaseForLinux creates a test release for linux
 func promoteTestReleaseForLinux(bucketName string) error {
-	return copyUpdateJSON(bucketName, "test", PlatformTypeLinux, "prod")
+	return copyUpdateJSON(bucketName, "", "test", PlatformTypeLinux, "prod")
 }
 
+// promoteTestReleaseForWindows creates a test release for windows
 func promoteTestReleaseForWindows(bucketName string) error {
-	return copyUpdateJSON(bucketName, "test", PlatformTypeWindows, "prod")
+	return copyUpdateJSON(bucketName, "", "test", PlatformTypeWindows, "prod")
 }
 
-// PromoteTestReleases promotes test releases for a platform
+// PromoteTestReleases creates test releases for a platform
 func PromoteTestReleases(bucketName string, platformName string) error {
 	switch platformName {
 	case PlatformTypeDarwin:
@@ -615,11 +614,11 @@ func PromoteTestReleases(bucketName string, platformName string) error {
 	}
 }
 
-// PromoteReleases promotes releases for a platform
+// PromoteReleases creates releases for a platform
 func PromoteReleases(bucketName string, platform string) error {
 	switch platform {
 	case PlatformTypeDarwin:
-		release, err := promoteRelease(bucketName, time.Hour*27, 10, "", platformDarwin, "prod", false)
+		release, err := promoteRelease(bucketName, time.Hour*27, 10, "v2", platformDarwin, "prod", false)
 		if err != nil {
 			return err
 		}
