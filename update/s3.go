@@ -548,7 +548,7 @@ func copyUpdateJSON(bucketName string, fromChannel string, toChannel string, pla
 }
 
 func (c *Client) report(tw io.Writer, bucketName string, channel string, platformName string) {
-	update, _, err := c.CurrentUpdate(bucketName, channel, platformName, "prod")
+	update, jsonPath, err := c.CurrentUpdate(bucketName, channel, platformName, "prod")
 	fmt.Fprintf(tw, fmt.Sprintf("%s\t%s\t", platformName, channel))
 	if err != nil {
 		fmt.Fprintln(tw, "Error")
@@ -557,7 +557,7 @@ func (c *Client) report(tw io.Writer, bucketName string, channel string, platfor
 		if update.PublishedAt != nil {
 			published = convertEastern(FromTime(*update.PublishedAt)).Format(time.UnixDate)
 		}
-		fmt.Fprintf(tw, "%s\t%s\n", update.Version, published)
+		fmt.Fprintf(tw, "%s\t%s\t%s\n", update.Version, published, jsonPath)
 	} else {
 		fmt.Fprintln(tw, "None")
 	}
@@ -571,7 +571,7 @@ func Report(bucketName string, writer io.Writer) error {
 	}
 
 	tw := tabwriter.NewWriter(writer, 5, 0, 3, ' ', 0)
-	fmt.Fprintln(tw, "Platform\tType\tVersion\tCreated")
+	fmt.Fprintln(tw, "Platform\tType\tVersion\tCreated\tSource")
 	client.report(tw, bucketName, "test-v2", PlatformTypeDarwin)
 	client.report(tw, bucketName, "v2", PlatformTypeDarwin)
 	client.report(tw, bucketName, "test", PlatformTypeDarwin)
