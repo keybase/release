@@ -571,7 +571,7 @@ func Report(bucketName string, writer io.Writer) error {
 	}
 
 	tw := tabwriter.NewWriter(writer, 5, 0, 3, ' ', 0)
-	fmt.Fprintln(tw, "Platform\tType\tVersion\tCreated\tSource")
+	fmt.Fprintln(tw, "Platform\tChannel\tVersion\tCreated\tSource")
 	client.report(tw, bucketName, "test-v2", PlatformTypeDarwin)
 	client.report(tw, bucketName, "v2", PlatformTypeDarwin)
 	client.report(tw, bucketName, "test", PlatformTypeDarwin)
