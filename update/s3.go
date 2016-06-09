@@ -588,8 +588,7 @@ func Report(bucketName string, writer io.Writer) error {
 
 // promoteTestReleaseForDarwin creates a test release for darwin
 func promoteTestReleaseForDarwin(bucketName string) (*Release, error) {
-	// Change to test-v2 when building v2
-	return promoteRelease(bucketName, time.Duration(0), 0, "test", platformDarwin, "prod", true)
+	return promoteRelease(bucketName, time.Duration(0), 0, "test-v2", platformDarwin, "prod", true)
 }
 
 // promoteTestReleaseForLinux creates a test release for linux
