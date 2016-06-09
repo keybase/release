@@ -575,6 +575,8 @@ func Report(bucketName string, writer io.Writer) error {
 
 	tw := tabwriter.NewWriter(writer, 5, 0, 3, ' ', 0)
 	fmt.Fprintln(tw, "Platform\tType\tVersion\tCreated")
+	client.report(tw, bucketName, "test-v2", PlatformTypeDarwin)
+	client.report(tw, bucketName, "v2", PlatformTypeDarwin)
 	client.report(tw, bucketName, "test", PlatformTypeDarwin)
 	client.report(tw, bucketName, "", PlatformTypeDarwin)
 	client.report(tw, bucketName, "test", PlatformTypeLinux)
@@ -586,7 +588,7 @@ func Report(bucketName string, writer io.Writer) error {
 
 // promoteTestReleaseForDarwin creates a test release for darwin
 func promoteTestReleaseForDarwin(bucketName string) (*Release, error) {
-	return promoteRelease(bucketName, time.Duration(0), 0, "test", platformDarwin, "prod", true)
+	return promoteRelease(bucketName, time.Duration(0), 0, "test-v2", platformDarwin, "prod", true)
 }
 
 // promoteTestReleaseForLinux creates a test release for linux
