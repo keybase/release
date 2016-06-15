@@ -422,7 +422,7 @@ func PromoteARelease(releaseName string, bucketName string, platform string) err
 		return nerr
 	}
 
-	cerr := client.promoteDarwinReleaseToProd(releaseName, bucketName, platformDarwin, "prod")
+	cerr := client.promoteDarwinReleaseToProd(releaseName, bucketName, platformDarwin, "prod", "v2")
 	if cerr != nil {
 		return cerr
 	}
@@ -431,7 +431,7 @@ func PromoteARelease(releaseName string, bucketName string, platform string) err
 	return nil
 }
 
-func (c *Client) promoteDarwinReleaseToProd(releaseName string, bucketName string, platform Platform, env string) error {
+func (c *Client) promoteDarwinReleaseToProd(releaseName string, bucketName string, platform Platform, env string, toChannel string) error {
 	releaseName = fmt.Sprintf("Keybase-%s.dmg", releaseName)
 	release, err := platform.FindRelease(bucketName, func(r Release) bool {
 		return r.Name == releaseName
@@ -443,8 +443,7 @@ func (c *Client) promoteDarwinReleaseToProd(releaseName string, bucketName strin
 		return fmt.Errorf("No matching release found")
 	}
 	log.Printf("Found release %s (%s), %s", release.Name, time.Since(release.Date), release.Version)
-	channel := ""
-	jsonName := updateJSONName(channel, platform.Name, env)
+	jsonName := updateJSONName(toChannel, platform.Name, env)
 	jsonURL := urlString(bucketName, platform.PrefixSupport, fmt.Sprintf("update-%s-%s-%s.json", platform.Name, env, release.Version))
 	log.Printf("PutCopying %s to %s\n", jsonURL, jsonName)
 
