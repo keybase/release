@@ -27,6 +27,8 @@ import (
 
 const defaultCacheControl = "max-age=60"
 
+const defaultChannel = "v2"
+
 // Section defines a set of releases
 type Section struct {
 	Header   string
@@ -354,7 +356,7 @@ func (c *Client) CopyLatest(bucketName string, platform string) error {
 }
 
 func (c *Client) copyFromUpdate(platform Platform, bucketName string) (url string, err error) {
-	currentUpdate, path, err := c.CurrentUpdate(bucketName, "v2", platform.Name, "prod")
+	currentUpdate, path, err := c.CurrentUpdate(bucketName, defaultChannel, platform.Name, "prod")
 	if err != nil {
 		err = fmt.Errorf("Error getting current public update: %s", err)
 		return
@@ -422,7 +424,7 @@ func PromoteARelease(releaseName string, bucketName string, platform string) err
 		return nerr
 	}
 
-	cerr := client.promoteDarwinReleaseToProd(releaseName, bucketName, platformDarwin, "prod", "v2")
+	cerr := client.promoteDarwinReleaseToProd(releaseName, bucketName, platformDarwin, "prod", defaultChannel)
 	if cerr != nil {
 		return cerr
 	}
@@ -618,7 +620,7 @@ func PromoteTestReleases(bucketName string, platformName string) error {
 func PromoteReleases(bucketName string, platform string) error {
 	switch platform {
 	case PlatformTypeDarwin:
-		release, err := promoteRelease(bucketName, time.Hour*27, 10, "v2", platformDarwin, "prod", false)
+		release, err := promoteRelease(bucketName, time.Hour*27, 10, defaultChannel, platformDarwin, "prod", false)
 		if err != nil {
 			return err
 		}
