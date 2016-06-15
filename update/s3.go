@@ -354,7 +354,7 @@ func (c *Client) CopyLatest(bucketName string, platform string) error {
 }
 
 func (c *Client) copyFromUpdate(platform Platform, bucketName string) (url string, err error) {
-	currentUpdate, path, err := c.CurrentUpdate(bucketName, "", platform.Name, "prod")
+	currentUpdate, path, err := c.CurrentUpdate(bucketName, "v2", platform.Name, "prod")
 	if err != nil {
 		err = fmt.Errorf("Error getting current public update: %s", err)
 		return
