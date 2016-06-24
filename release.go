@@ -61,7 +61,7 @@ var (
 	updateJSONSrc         = updateJSONCmd.Flag("src", "Source file").ExistingFile()
 	updateJSONURI         = updateJSONCmd.Flag("uri", "URI for location of files").URL()
 	updateJSONSignature   = updateJSONCmd.Flag("signature", "Signature file").ExistingFile()
-	updateJSONDescription = updateJSONCmd.Flag("description", "Description").String()
+	updateJSONDescription = updateJSONCmd.Flag("description", "Description file").ExistingFile()
 
 	indexHTMLCmd        = app.Command("index-html", "Generate index.html for s3 bucket")
 	indexHTMLBucketName = indexHTMLCmd.Flag("bucket-name", "Bucket name to index").Required().String()
