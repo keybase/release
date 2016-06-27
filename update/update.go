@@ -18,11 +18,10 @@ import (
 )
 
 // EncodeJSON returns JSON (as bytes) for an update
-func EncodeJSON(version string, name string, description string, src string, URI fmt.Stringer, signature string) ([]byte, error) {
+func EncodeJSON(version string, name string, descriptionPath string, src string, URI fmt.Stringer, signaturePath string) ([]byte, error) {
 	update := Update{
-		Version:     version,
-		Description: description,
-		Name:        name,
+		Version: version,
+		Name:    name,
 	}
 
 	// Get published at from version string
@@ -58,12 +57,20 @@ func EncodeJSON(version string, name string, description string, src string, URI
 		}
 		asset.Digest = digest
 
-		if signature != "" {
-			sig, err := readFile(signature)
+		if signaturePath != "" {
+			sig, err := readFile(signaturePath)
 			if err != nil {
 				return nil, err
 			}
 			asset.Signature = sig
+		}
+
+		if descriptionPath != "" {
+			desc, err := readFile(descriptionPath)
+			if err != nil {
+				return nil, err
+			}
+			update.Description = desc
 		}
 
 		update.Asset = &asset
