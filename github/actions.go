@@ -197,9 +197,12 @@ func WaitForCI(token string, repo string, commit string, contexts []string, dela
 		const success = "success"
 		const failure = "failure"
 		matching := map[string]Status{}
-		// for _, status := range statuses {
-		// 	log.Printf("\t%s (%s)", status.Context, status.State)
-		// }
+		log.Println("\tStatuses:")
+		for _, status := range statuses {
+			log.Printf("\t%s (%s)", status.Context, status.State)
+		}
+		log.Println("\t")
+		log.Println("\tMatch:")
 		for _, status := range statuses {
 			context := re.ReplaceAllString(status.Context, "$1")
 			if stringInSlice(context, contexts) {
@@ -216,6 +219,7 @@ func WaitForCI(token string, repo string, commit string, contexts []string, dela
 				}
 			}
 		}
+		log.Println("\t")
 		// If we match all contexts then we've passed
 		if len(contexts) == len(matching) {
 			return nil
