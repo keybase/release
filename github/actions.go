@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"time"
 )
@@ -186,6 +187,7 @@ func stringInSlice(str string, list []string) bool {
 // WaitForCI waits for commit in repo to pass CI contexts
 func WaitForCI(token string, repo string, commit string, contexts []string, delay time.Duration, timeout time.Duration) error {
 	start := time.Now()
+	re := regexp.MustCompile("(.*)(/label=.*)")
 	for time.Since(start) < timeout {
 		log.Printf("Checking status for %s (%s)", contexts, commit)
 		statuses, err := Statuses("keybase", repo, commit, token)
@@ -199,17 +201,18 @@ func WaitForCI(token string, repo string, commit string, contexts []string, dela
 		// 	log.Printf("\t%s (%s)", status.Context, status.State)
 		// }
 		for _, status := range statuses {
-			if stringInSlice(status.Context, contexts) {
+			context := re.ReplaceAllString(status.Context, "$1")
+			if stringInSlice(context, contexts) {
 				switch status.State {
 				case failure:
-					if matching[status.Context].State != success {
-						log.Printf("\t%s (failure)", status.Context)
-						return fmt.Errorf("Failure in CI for %s", status.Context)
+					if matching[context].State != success {
+						log.Printf("\t%s (failure)", context)
+						return fmt.Errorf("Failure in CI for %s", context)
 					}
-					log.Printf("\t%s (ignoring previous failure)", status.Context)
+					log.Printf("\t%s (ignoring previous failure)", context)
 				case success:
-					log.Printf("\t%s (success)", status.Context)
-					matching[status.Context] = status
+					log.Printf("\t%s (success)", context)
+					matching[context] = status
 				}
 			}
 		}
