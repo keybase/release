@@ -194,26 +194,27 @@ func WaitForCI(token string, repo string, commit string, contexts []string, dela
 		if err != nil {
 			return err
 		}
-		const success = "success"
-		const failure = "failure"
 		matching := map[string]Status{}
 		log.Println("\tStatuses:")
 		for _, status := range statuses {
 			log.Printf("\t%s (%s)", status.Context, status.State)
 		}
+		const successStatus = "success"
+		const failureStatus = "failure"
+		const errorStatus = "error"
 		log.Println("\t")
 		log.Println("\tMatch:")
 		for _, status := range statuses {
 			context := re.ReplaceAllString(status.Context, "$1")
 			if stringInSlice(context, contexts) {
 				switch status.State {
-				case failure:
-					if matching[context].State != success {
-						log.Printf("\t%s (failure)", context)
+				case failureStatus, errorStatus:
+					if matching[context].State != successStatus {
+						log.Printf("\t%s (%s)", context, status.State)
 						return fmt.Errorf("Failure in CI for %s", context)
 					}
 					log.Printf("\t%s (ignoring previous failure)", context)
-				case success:
+				case successStatus:
 					log.Printf("\t%s (success)", context)
 					matching[context] = status
 				}
