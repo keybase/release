@@ -189,7 +189,7 @@ func WaitForCI(token string, repo string, commit string, contexts []string, dela
 	start := time.Now()
 	re := regexp.MustCompile("(.*)(/label=.*)")
 	for time.Since(start) < timeout {
-		log.Printf("Checking status for %s, %s (%s)", repo, contexts, commit)
+		log.Printf("Checking status for %s, %#v (%s)", repo, contexts, commit)
 		statuses, err := Statuses("keybase", repo, commit, token)
 		if err != nil {
 			return err
