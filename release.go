@@ -109,6 +109,11 @@ var (
 	waitForCIContexts = waitForCICmd.Flag("context", "Context to check for success").Required().Strings()
 	waitForCIDelay    = waitForCICmd.Flag("delay", "Delay between checks").Default("1m").Duration()
 	waitForCITimeout  = waitForCICmd.Flag("timeout", "Delay between checks").Default("1h").Duration()
+
+	announceNewBuildCmd      = app.Command("announce-new-build-to-server", "Inform the API server of the existence of a new build")
+	announceNewBuildA        = announceNewBuildCmd.Flag("build-a", "The first of the two IDs comprising the new build").Required().String()
+	announceNewBuildB        = announceNewBuildCmd.Flag("build-b", "The first of the two IDs comprising the new build").Required().String()
+	announceNewBuildPlatform = announceNewBuildCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
 )
 
 func main() {
@@ -229,6 +234,11 @@ func main() {
 		fmt.Printf("%s", commit.SHA)
 	case waitForCICmd.FullCommand():
 		err := gh.WaitForCI(githubToken(true), *waitForCIRepo, *waitForCICommit, *waitForCIContexts, *waitForCIDelay, *waitForCITimeout)
+		if err != nil {
+			log.Fatal(err)
+		}
+	case announceNewBuildCmd.FullCommand():
+		err := update.AnnounceNewBuild(*announceNewBuildA, *announceNewBuildB, *announceNewBuildPlatform)
 		if err != nil {
 			log.Fatal(err)
 		}
