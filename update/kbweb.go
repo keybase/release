@@ -56,13 +56,12 @@ If1AkUV0tfCTNRZ01EotKSK77+o+k214n+BAu+7mO+9B5Kb7lMFQcuWCHXKYB2Md
 cT7Yh09F0QpFUd0ymEfv
 -----END CERTIFICATE-----`
 
-// KbwebClient is a Keybase API server client
-type KbwebClient struct {
+type kbwebClient struct {
 	http *http.Client
 }
 
 // NewKbwebClient constructs a Client
-func NewKbwebClient() (*KbwebClient, error) {
+func newKbwebClient() (*kbwebClient, error) {
 	certPool := x509.NewCertPool()
 	ok := certPool.AppendCertsFromPEM([]byte(apiCa))
 	if !ok {
@@ -73,11 +72,11 @@ func NewKbwebClient() (*KbwebClient, error) {
 			TLSClientConfig: &tls.Config{RootCAs: certPool},
 		},
 	}
-	return &KbwebClient{http: client}, nil
+	return &kbwebClient{http: client}, nil
 }
 
 func kbwebPost(keybaseToken string, path string, data []byte) error {
-	client, err := NewKbwebClient()
+	client, err := newKbwebClient()
 	if err != nil {
 		return fmt.Errorf("client create failed, %v", err)
 	}
