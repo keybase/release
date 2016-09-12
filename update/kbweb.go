@@ -76,7 +76,7 @@ func NewKbwebClient() (*KbwebClient, error) {
 	return &KbwebClient{http: client}, nil
 }
 
-func kbwebPost(path string, data []byte) error {
+func kbwebPost(keybaseToken string, path string, data []byte) error {
 	client, err := NewKbwebClient()
 	if err != nil {
 		return fmt.Errorf("client create failed, %v", err)
@@ -87,7 +87,7 @@ func kbwebPost(path string, data []byte) error {
 		return fmt.Errorf("newrequest failed, %v", err)
 	}
 	req.Header.Add("content-type", "application/json")
-	req.Header.Add("x-keybase-admin-token", "test_token")
+	req.Header.Add("x-keybase-admin-token", keybaseToken)
 	resp, err := client.http.Do(req)
 	if err != nil {
 		return fmt.Errorf("request failed, %v", err)
@@ -111,7 +111,7 @@ type announceNewBuildArgs struct {
 
 // AnnounceNewBuild tells the API server about the existence of a new build.
 // It does not enroll it in smoke testing.
-func AnnounceNewBuild(buildA string, buildB string, platform string) error {
+func AnnounceNewBuild(keybaseToken string, buildA string, buildB string, platform string) error {
 	args := &announceNewBuildArgs{
 		VersionA: buildA,
 		VersionB: buildB,
@@ -122,7 +122,7 @@ func AnnounceNewBuild(buildA string, buildB string, platform string) error {
 		return fmt.Errorf("json marshal err, %v", err)
 	}
 	var data = []byte(jsonStr)
-	return kbwebPost("/_/api/1.0/pkg/add_build.json", data)
+	return kbwebPost(keybaseToken, "/_/api/1.0/pkg/add_build.json", data)
 }
 
 type setBuildInTestingArgs struct {
@@ -132,7 +132,7 @@ type setBuildInTestingArgs struct {
 }
 
 // SetBuildInTesting tells the API server to enroll or unenroll a build in smoke testing.
-func SetBuildInTesting(buildA string, platform string, inTesting string) error {
+func SetBuildInTesting(keybaseToken string, buildA string, platform string, inTesting string) error {
 	args := &setBuildInTestingArgs{
 		VersionA:  buildA,
 		Platform:  platform,
@@ -143,5 +143,5 @@ func SetBuildInTesting(buildA string, platform string, inTesting string) error {
 		return fmt.Errorf("json marshal err: %v", err)
 	}
 	var data = []byte(jsonStr)
-	return kbwebPost("/_/api/1.0/pkg/set_in_testing.json", data)
+	return kbwebPost(keybaseToken, "/_/api/1.0/pkg/set_in_testing.json", data)
 }

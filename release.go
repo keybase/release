@@ -24,6 +24,14 @@ func githubToken(required bool) string {
 	return token
 }
 
+func keybaseToken(required bool) string {
+	token := os.Getenv("KEYBASE_TOKEN")
+	if token == "" && required {
+		log.Fatal("No KEYBASE_TOKEN set")
+	}
+	return token
+}
+
 func tag(version string) string {
 	return fmt.Sprintf("v%s", version)
 }
@@ -243,12 +251,12 @@ func main() {
 			log.Fatal(err)
 		}
 	case announceNewBuildCmd.FullCommand():
-		err := update.AnnounceNewBuild(*announceNewBuildA, *announceNewBuildB, *announceNewBuildPlatform)
+		err := update.AnnounceNewBuild(keybaseToken(true), *announceNewBuildA, *announceNewBuildB, *announceNewBuildPlatform)
 		if err != nil {
 			log.Fatal(err)
 		}
 	case setBuildInTestingCmd.FullCommand():
-		err := update.SetBuildInTesting(*setBuildInTestingA, *setBuildInTestingPlatform, *setBuildInTestingEnable)
+		err := update.SetBuildInTesting(keybaseToken(true), *setBuildInTestingA, *setBuildInTestingPlatform, *setBuildInTestingEnable)
 		if err != nil {
 			log.Fatal(err)
 		}
