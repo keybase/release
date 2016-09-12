@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	kbwebAPIUrl = "https://keybase.io"
+	kbwebAPIUrl = "https://api.keybase.io"
 )
 
 const apiCa = `-----BEGIN CERTIFICATE-----
@@ -76,6 +76,33 @@ func NewKbwebClient() (*KbwebClient, error) {
 	return &KbwebClient{http: client}, nil
 }
 
+func kbwebPost(path string, data []byte) error {
+	client, err := NewKbwebClient()
+	if err != nil {
+		return fmt.Errorf("client create failed, %v", err)
+	}
+
+	req, err := http.NewRequest("POST", kbwebAPIUrl+path, bytes.NewBuffer(data))
+	if err != nil {
+		return fmt.Errorf("newrequest failed, %v", err)
+	}
+	req.Header.Add("content-type", "application/json")
+	req.Header.Add("x-keybase-admin-token", "test_token")
+	resp, err := client.http.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed, %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("body err, %v", err)
+	}
+	fmt.Printf("body: %s\n", body)
+
+	return nil
+}
+
 type announceNewBuildArgs struct {
 	VersionA string `json:"version_a"`
 	VersionB string `json:"version_b"`
@@ -85,36 +112,17 @@ type announceNewBuildArgs struct {
 // AnnounceNewBuild tells the API server about the existence of a new build.
 // It does not enroll it in smoke testing.
 func AnnounceNewBuild(buildA string, buildB string, platform string) error {
-	client, err := NewKbwebClient()
-	if err != nil {
-		return fmt.Errorf("client create failed, %s", err)
-	}
 	args := &announceNewBuildArgs{
 		VersionA: buildA,
 		VersionB: buildB,
 		Platform: platform,
 	}
-	jsonStr, _ := json.Marshal(args)
+	jsonStr, err := json.Marshal(args)
+	if err != nil {
+		return fmt.Errorf("json marshal err, %v", err)
+	}
 	var data = []byte(jsonStr)
-	req, _ := http.NewRequest("POST", kbwebAPIUrl+"/_/api/1.0/pkg/add_build.json", bytes.NewBuffer(data))
-	req.Header.Add("content-type", "application/json")
-	req.Header.Add("x-keybase-admin-token", "test_token")
-	resp, _ := client.http.Do(req)
-	if err != nil {
-		return fmt.Errorf("request failed, %v", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("%s responded with %v", kbwebAPIUrl, resp.Status)
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("body err: %s", err)
-	}
-	fmt.Printf("body: %s\n", body)
-
-	return nil
+	return kbwebPost("/_/api/1.0/pkg/add_build.json", data)
 }
 
 type setBuildInTestingArgs struct {
@@ -125,34 +133,15 @@ type setBuildInTestingArgs struct {
 
 // SetBuildInTesting tells the API server to enroll or unenroll a build in smoke testing.
 func SetBuildInTesting(buildA string, platform string, inTesting string) error {
-	client, err := NewKbwebClient()
-	if err != nil {
-		return fmt.Errorf("client create failed, %s", err)
-	}
 	args := &setBuildInTestingArgs{
 		VersionA:  buildA,
 		Platform:  platform,
 		InTesting: inTesting,
 	}
-	jsonStr, _ := json.Marshal(args)
+	jsonStr, err := json.Marshal(args)
+	if err != nil {
+		return fmt.Errorf("json marshal err: %v", err)
+	}
 	var data = []byte(jsonStr)
-	req, _ := http.NewRequest("POST", kbwebAPIUrl+"/_/api/1.0/pkg/set_in_testing.json", bytes.NewBuffer(data))
-	req.Header.Add("content-type", "application/json")
-	req.Header.Add("x-keybase-admin-token", "test_token")
-	resp, _ := client.http.Do(req)
-	if err != nil {
-		return fmt.Errorf("request failed, %v", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("%s responded with %v", kbwebAPIUrl, resp.Status)
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("body err: %s", err)
-	}
-	fmt.Printf("body: %s\n", body)
-
-	return nil
+	return kbwebPost("/_/api/1.0/pkg/set_in_testing.json", data)
 }
