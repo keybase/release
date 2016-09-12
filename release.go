@@ -114,6 +114,11 @@ var (
 	announceNewBuildA        = announceNewBuildCmd.Flag("build-a", "The first of the two IDs comprising the new build").Required().String()
 	announceNewBuildB        = announceNewBuildCmd.Flag("build-b", "The first of the two IDs comprising the new build").Required().String()
 	announceNewBuildPlatform = announceNewBuildCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
+
+	setBuildInTestingCmd      = app.Command("set-build-in-testing", "Enroll or unenroll a build in smoketesting")
+	setBuildInTestingA        = setBuildInTestingCmd.Flag("build-a", "The first build's ID").Required().String()
+	setBuildInTestingPlatform = setBuildInTestingCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
+	setBuildInTestingEnable   = setBuildInTestingCmd.Flag("enable", "Enroll the build in smoketesting (boolish string)").Required().String()
 )
 
 func main() {
@@ -242,5 +247,11 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+	case setBuildInTestingCmd.FullCommand():
+		err := update.SetBuildInTesting(*setBuildInTestingA, *setBuildInTestingPlatform, *setBuildInTestingEnable)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
+
 }
