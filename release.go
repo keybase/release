@@ -251,7 +251,7 @@ func main() {
 			log.Fatal(err)
 		}
 	case announceBuildCmd.FullCommand():
-		err := update.AnnounceNewBuild(keybaseToken(true), *announceBuildA, *announceBuildB, *announceBuildPlatform)
+		err := update.AnnounceBuild(keybaseToken(true), *announceBuildA, *announceBuildB, *announceBuildPlatform)
 		if err != nil {
 			log.Fatal(err)
 		}

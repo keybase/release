@@ -113,7 +113,7 @@ func (client *kbwebClient) post(keybaseToken string, path string, data []byte) e
 	return nil
 }
 
-type announceNewBuildArgs struct {
+type announceBuildArgs struct {
 	VersionA string `json:"version_a"`
 	VersionB string `json:"version_b"`
 	Platform string `json:"platform"`
@@ -121,12 +121,12 @@ type announceNewBuildArgs struct {
 
 // AnnounceNewBuild tells the API server about the existence of a new build.
 // It does not enroll it in smoke testing.
-func AnnounceNewBuild(keybaseToken string, buildA string, buildB string, platform string) error {
+func AnnounceBuild(keybaseToken string, buildA string, buildB string, platform string) error {
 	client, err := newKbwebClient()
 	if err != nil {
 		return fmt.Errorf("client create failed, %v", err)
 	}
-	args := &announceNewBuildArgs{
+	args := &announceBuildArgs{
 		VersionA: buildA,
 		VersionB: buildB,
 		Platform: platform,
