@@ -119,7 +119,7 @@ type announceBuildArgs struct {
 	Platform string `json:"platform"`
 }
 
-// AnnounceNewBuild tells the API server about the existence of a new build.
+// AnnounceBuild tells the API server about the existence of a new build.
 // It does not enroll it in smoke testing.
 func AnnounceBuild(keybaseToken string, buildA string, buildB string, platform string) error {
 	client, err := newKbwebClient()
