@@ -24,6 +24,14 @@ func githubToken(required bool) string {
 	return token
 }
 
+func keybaseToken(required bool) string {
+	token := os.Getenv("KEYBASE_TOKEN")
+	if token == "" && required {
+		log.Fatal("No KEYBASE_TOKEN set")
+	}
+	return token
+}
+
 func tag(version string) string {
 	return fmt.Sprintf("v%s", version)
 }
@@ -109,6 +117,16 @@ var (
 	waitForCIContexts = waitForCICmd.Flag("context", "Context to check for success").Required().Strings()
 	waitForCIDelay    = waitForCICmd.Flag("delay", "Delay between checks").Default("1m").Duration()
 	waitForCITimeout  = waitForCICmd.Flag("timeout", "Delay between checks").Default("1h").Duration()
+
+	announceBuildCmd      = app.Command("announce-build", "Inform the API server of the existence of a new build")
+	announceBuildA        = announceBuildCmd.Flag("build-a", "The first of the two IDs comprising the new build").Required().String()
+	announceBuildB        = announceBuildCmd.Flag("build-b", "The first of the two IDs comprising the new build").Required().String()
+	announceBuildPlatform = announceBuildCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
+
+	setBuildInTestingCmd      = app.Command("set-build-in-testing", "Enroll or unenroll a build in smoketesting")
+	setBuildInTestingA        = setBuildInTestingCmd.Flag("build-a", "The first build's ID").Required().String()
+	setBuildInTestingPlatform = setBuildInTestingCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
+	setBuildInTestingEnable   = setBuildInTestingCmd.Flag("enable", "Enroll the build in smoketesting (boolish string)").Required().String()
 )
 
 func main() {
@@ -232,5 +250,16 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+	case announceBuildCmd.FullCommand():
+		err := update.AnnounceBuild(keybaseToken(true), *announceBuildA, *announceBuildB, *announceBuildPlatform)
+		if err != nil {
+			log.Fatal(err)
+		}
+	case setBuildInTestingCmd.FullCommand():
+		err := update.SetBuildInTesting(keybaseToken(true), *setBuildInTestingA, *setBuildInTestingPlatform, *setBuildInTestingEnable)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
+
 }
