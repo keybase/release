@@ -60,6 +60,13 @@ type kbwebClient struct {
 	http *http.Client
 }
 
+type kbwebReply struct {
+	Status struct {
+		Code int
+		Desc string
+	}
+}
+
 // newKbwebClient constructs a Client
 func newKbwebClient() (*kbwebClient, error) {
 	certPool := x509.NewCertPool()
@@ -92,15 +99,17 @@ func (client *kbwebClient) post(keybaseToken string, path string, data []byte) e
 	if err != nil {
 		return fmt.Errorf("body err, %v", err)
 	}
-	fmt.Printf("Server reply: %s\n", body)
 
-	var reply map[string]interface{}
-	if err := json.Unmarshal(body, &reply); err != nil {
-		return fmt.Errorf("reply err, %v", err)
+	reply := &kbwebReply{}
+	if err := json.Unmarshal(body, reply); err != nil {
+		return fmt.Errorf("json reply err, %v", err)
 	}
-	num := reply["status"]["code"].(int)
-	fmt.Printf("status code was: %d\n", num)
 
+	if reply.Status.Code != 0 {
+		return fmt.Errorf("Server returned failure, %s", body)
+	}
+
+	fmt.Printf("Success.\n")
 	return nil
 }
 
