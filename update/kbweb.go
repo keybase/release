@@ -60,7 +60,7 @@ type kbwebClient struct {
 	http *http.Client
 }
 
-// NewKbwebClient constructs a Client
+// newKbwebClient constructs a Client
 func newKbwebClient() (*kbwebClient, error) {
 	certPool := x509.NewCertPool()
 	ok := certPool.AppendCertsFromPEM([]byte(apiCa))
@@ -75,12 +75,7 @@ func newKbwebClient() (*kbwebClient, error) {
 	return &kbwebClient{http: client}, nil
 }
 
-func kbwebPost(keybaseToken string, path string, data []byte) error {
-	client, err := newKbwebClient()
-	if err != nil {
-		return fmt.Errorf("client create failed, %v", err)
-	}
-
+func (client *kbwebClient) post(keybaseToken string, path string, data []byte) error {
 	req, err := http.NewRequest("POST", kbwebAPIUrl+path, bytes.NewBuffer(data))
 	if err != nil {
 		return fmt.Errorf("newrequest failed, %v", err)
@@ -97,7 +92,7 @@ func kbwebPost(keybaseToken string, path string, data []byte) error {
 	if err != nil {
 		return fmt.Errorf("body err, %v", err)
 	}
-	fmt.Printf("body: %s\n", body)
+	fmt.Printf("Server reply: %s\n", body)
 
 	return nil
 }
@@ -111,6 +106,10 @@ type announceNewBuildArgs struct {
 // AnnounceNewBuild tells the API server about the existence of a new build.
 // It does not enroll it in smoke testing.
 func AnnounceNewBuild(keybaseToken string, buildA string, buildB string, platform string) error {
+	client, err := newKbwebClient()
+	if err != nil {
+		return fmt.Errorf("client create failed, %v", err)
+	}
 	args := &announceNewBuildArgs{
 		VersionA: buildA,
 		VersionB: buildB,
@@ -121,7 +120,7 @@ func AnnounceNewBuild(keybaseToken string, buildA string, buildB string, platfor
 		return fmt.Errorf("json marshal err, %v", err)
 	}
 	var data = []byte(jsonStr)
-	return kbwebPost(keybaseToken, "/_/api/1.0/pkg/add_build.json", data)
+	return client.post(keybaseToken, "/_/api/1.0/pkg/add_build.json", data)
 }
 
 type setBuildInTestingArgs struct {
@@ -132,6 +131,10 @@ type setBuildInTestingArgs struct {
 
 // SetBuildInTesting tells the API server to enroll or unenroll a build in smoke testing.
 func SetBuildInTesting(keybaseToken string, buildA string, platform string, inTesting string) error {
+	client, err := newKbwebClient()
+	if err != nil {
+		return fmt.Errorf("client create failed, %v", err)
+	}
 	args := &setBuildInTestingArgs{
 		VersionA:  buildA,
 		Platform:  platform,
@@ -142,5 +145,5 @@ func SetBuildInTesting(keybaseToken string, buildA string, platform string, inTe
 		return fmt.Errorf("json marshal err: %v", err)
 	}
 	var data = []byte(jsonStr)
-	return kbwebPost(keybaseToken, "/_/api/1.0/pkg/set_in_testing.json", data)
+	return client.post(keybaseToken, "/_/api/1.0/pkg/set_in_testing.json", data)
 }

@@ -118,10 +118,10 @@ var (
 	waitForCIDelay    = waitForCICmd.Flag("delay", "Delay between checks").Default("1m").Duration()
 	waitForCITimeout  = waitForCICmd.Flag("timeout", "Delay between checks").Default("1h").Duration()
 
-	announceNewBuildCmd      = app.Command("announce-new-build-to-server", "Inform the API server of the existence of a new build")
-	announceNewBuildA        = announceNewBuildCmd.Flag("build-a", "The first of the two IDs comprising the new build").Required().String()
-	announceNewBuildB        = announceNewBuildCmd.Flag("build-b", "The first of the two IDs comprising the new build").Required().String()
-	announceNewBuildPlatform = announceNewBuildCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
+	announceBuildCmd      = app.Command("announce-build", "Inform the API server of the existence of a new build")
+	announceBuildA        = announceBuildCmd.Flag("build-a", "The first of the two IDs comprising the new build").Required().String()
+	announceBuildB        = announceBuildCmd.Flag("build-b", "The first of the two IDs comprising the new build").Required().String()
+	announceBuildPlatform = announceBuildCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
 
 	setBuildInTestingCmd      = app.Command("set-build-in-testing", "Enroll or unenroll a build in smoketesting")
 	setBuildInTestingA        = setBuildInTestingCmd.Flag("build-a", "The first build's ID").Required().String()
@@ -250,8 +250,8 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-	case announceNewBuildCmd.FullCommand():
-		err := update.AnnounceNewBuild(keybaseToken(true), *announceNewBuildA, *announceNewBuildB, *announceNewBuildPlatform)
+	case announceBuildCmd.FullCommand():
+		err := update.AnnounceNewBuild(keybaseToken(true), *announceBuildA, *announceBuildB, *announceBuildPlatform)
 		if err != nil {
 			log.Fatal(err)
 		}
