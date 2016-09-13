@@ -94,6 +94,13 @@ func (client *kbwebClient) post(keybaseToken string, path string, data []byte) e
 	}
 	fmt.Printf("Server reply: %s\n", body)
 
+	var reply map[string]interface{}
+	if err := json.Unmarshal(body, &reply); err != nil {
+		return fmt.Errorf("reply err, %v", err)
+	}
+	num := reply["status"]["code"].(int)
+	fmt.Printf("status code was: %d\n", num)
+
 	return nil
 }
 
