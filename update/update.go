@@ -80,7 +80,7 @@ func EncodeJSON(version string, name string, descriptionPath string, props []str
 	if props != nil {
 		uprops := []Property{}
 		for _, p := range props {
-			splitp := strings.SplitN(p, ",", 2)
+			splitp := strings.SplitN(p, ":", 2)
 			if len(splitp) == 2 {
 				uprops = append(uprops, Property{Name: splitp[0], Value: splitp[1]})
 			}
