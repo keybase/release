@@ -18,10 +18,12 @@ import (
 )
 
 // EncodeJSON returns JSON (as bytes) for an update
-func EncodeJSON(version string, name string, descriptionPath string, src string, URI fmt.Stringer, signaturePath string) ([]byte, error) {
+func EncodeJSON(version string, name string, descriptionPath string, src string, URI fmt.Stringer, signaturePath string, dokanCodeX64 string, dokanCodeX86 string) ([]byte, error) {
 	update := Update{
 		Version: version,
 		Name:    name,
+		DokanCodeX64: dokanCodeX64,
+		DokanCodeX86: dokanCodeX86, 
 	}
 
 	// Get published at from version string
