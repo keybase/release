@@ -28,7 +28,7 @@ const (
 
 // Property is a generic key value pair for custom properties
 type Property struct {
-	Key   string `codec:"key" json:"key"`
+	Name  string `codec:"name" json:"name"`
 	Value string `codec:"value" json:"value"`
 }
 
