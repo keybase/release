@@ -35,6 +35,8 @@ type Update struct {
 	Type         Type    `codec:"type" json:"type"`
 	PublishedAt  *Time   `codec:"publishedAt,omitempty" json:"publishedAt,omitempty"`
 	Asset        *Asset  `codec:"asset,omitempty" json:"asset,omitempty"`
+	DokanCodeX86 string  `codec:"dokanCodeX86" json:"dokanCodeX86,omitempty"`
+	DokanCodeX64 string  `codec:"dokanCodeX64" json:"dokanCodeX64,omitempty"`
 }
 
 // Time as millis
