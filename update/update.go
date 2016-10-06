@@ -13,13 +13,14 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strings"
 
 	releaseVersion "github.com/keybase/release/version"
 )
 
 // EncodeJSON returns JSON (as bytes) for an update
-func EncodeJSON(version string, name string, descriptionPath string, src string, URI fmt.Stringer, signaturePath string) ([]byte, error) {
-	update := Update{
+func EncodeJSON(version string, name string, descriptionPath string, props []string, src string, URI fmt.Stringer, signaturePath string) ([]byte, error) {
+	upd := Update{
 		Version: version,
 		Name:    name,
 	}
@@ -28,21 +29,21 @@ func EncodeJSON(version string, name string, descriptionPath string, src string,
 	_, _, date, _, err := releaseVersion.Parse(version)
 	if err == nil {
 		t := ToTime(date)
-		update.PublishedAt = &t
+		upd.PublishedAt = &t
 	}
 
 	if src != "" && URI != nil {
 		fileName := path.Base(src)
 
 		// Or if we can't parse use the src file modification time
-		if update.PublishedAt == nil {
+		if upd.PublishedAt == nil {
 			var srcInfo os.FileInfo
 			srcInfo, err = os.Stat(src)
 			if err != nil {
 				return nil, err
 			}
 			t := ToTime(srcInfo.ModTime())
-			update.PublishedAt = &t
+			upd.PublishedAt = &t
 		}
 
 		urlString := fmt.Sprintf("%s/%s", URI.String(), url.QueryEscape(fileName))
@@ -70,13 +71,26 @@ func EncodeJSON(version string, name string, descriptionPath string, src string,
 			if err != nil {
 				return nil, err
 			}
-			update.Description = desc
+			upd.Description = desc
 		}
 
-		update.Asset = &asset
+		upd.Asset = &asset
 	}
 
-	return json.MarshalIndent(update, "", "  ")
+	if props != nil {
+		uprops := []Property{}
+		for _, p := range props {
+			splitp := strings.SplitN(p, ",", 2)
+			if len(splitp) == 2 {
+				uprops = append(uprops, Property{Key: splitp[0], Value: splitp[1]})
+			}
+		}
+		if len(uprops) > 0 {
+			upd.Props = uprops
+		}
+	}
+
+	return json.MarshalIndent(upd, "", "  ")
 }
 
 // DecodeJSON returns an update object from JSON (bytes)

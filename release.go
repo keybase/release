@@ -70,6 +70,7 @@ var (
 	updateJSONURI         = updateJSONCmd.Flag("uri", "URI for location of files").URL()
 	updateJSONSignature   = updateJSONCmd.Flag("signature", "Signature file").ExistingFile()
 	updateJSONDescription = updateJSONCmd.Flag("description", "Description file").ExistingFile()
+	updateJSONProps       = updateJSONCmd.Flag("prop", "Properties to include").Strings()
 
 	indexHTMLCmd        = app.Command("index-html", "Generate index.html for s3 bucket")
 	indexHTMLBucketName = indexHTMLCmd.Flag("bucket-name", "Bucket name to index").Required().String()
@@ -177,7 +178,7 @@ func main() {
 			log.Fatal(err)
 		}
 	case updateJSONCmd.FullCommand():
-		out, err := update.EncodeJSON(*updateJSONVersion, tag(*updateJSONVersion), *updateJSONDescription, *updateJSONSrc, *updateJSONURI, *updateJSONSignature)
+		out, err := update.EncodeJSON(*updateJSONVersion, tag(*updateJSONVersion), *updateJSONDescription, *updateJSONProps, *updateJSONSrc, *updateJSONURI, *updateJSONSignature)
 		if err != nil {
 			log.Fatal(err)
 		}

@@ -26,15 +26,22 @@ const (
 	Critical Type = 2
 )
 
+// Property is a generic key value pair for custom properties
+type Property struct {
+	Key   string `codec:"key" json:"key"`
+	Value string `codec:"value" json:"value"`
+}
+
 // Update defines an update
 type Update struct {
-	Version      string  `codec:"version" json:"version"`
-	Name         string  `codec:"name" json:"name"`
-	Description  string  `codec:"description" json:"description"`
-	Instructions *string `codec:"instructions,omitempty" json:"instructions,omitempty"`
-	Type         Type    `codec:"type" json:"type"`
-	PublishedAt  *Time   `codec:"publishedAt,omitempty" json:"publishedAt,omitempty"`
-	Asset        *Asset  `codec:"asset,omitempty" json:"asset,omitempty"`
+	Version      string     `codec:"version" json:"version"`
+	Name         string     `codec:"name" json:"name"`
+	Description  string     `codec:"description" json:"description"`
+	Instructions *string    `codec:"instructions,omitempty" json:"instructions,omitempty"`
+	Type         Type       `codec:"type" json:"type"`
+	PublishedAt  *Time      `codec:"publishedAt,omitempty" json:"publishedAt,omitempty"`
+	Props        []Property `codec:"props" json:"props,omitempty"`
+	Asset        *Asset     `codec:"asset,omitempty" json:"asset,omitempty"`
 }
 
 // Time as millis
