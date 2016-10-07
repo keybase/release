@@ -122,7 +122,7 @@ var (
 
 	announceBuildCmd      = app.Command("announce-build", "Inform the API server of the existence of a new build")
 	announceBuildA        = announceBuildCmd.Flag("build-a", "The first of the two IDs comprising the new build").Required().String()
-	announceBuildB        = announceBuildCmd.Flag("build-b", "The first of the two IDs comprising the new build").Required().String()
+	announceBuildB        = announceBuildCmd.Flag("build-b", "The second of the two IDs comprising the new build").Required().String()
 	announceBuildPlatform = announceBuildCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
 
 	setBuildInTestingCmd      = app.Command("set-build-in-testing", "Enroll or unenroll a build in smoketesting")
