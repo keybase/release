@@ -99,6 +99,7 @@ var (
 	promoteTestReleasesCmd        = app.Command("promote-test-releases", "Promote test releases")
 	promoteTestReleasesBucketName = promoteTestReleasesCmd.Flag("bucket-name", "Bucket name to use").Required().String()
 	promoteTestReleasesPlatform   = promoteTestReleasesCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
+	promoteTestReleasesRelease    = promoteTestReleasesCmd.Flag("release", "Specific release to promote to test").String()
 
 	updatesReportCmd        = app.Command("updates-report", "Summary of updates/releases")
 	updatesReportBucketName = updatesReportCmd.Flag("bucket-name", "Bucket name to use").Required().String()
@@ -216,7 +217,7 @@ func main() {
 			log.Fatal(err)
 		}
 	case promoteTestReleasesCmd.FullCommand():
-		err := update.PromoteTestReleases(*promoteTestReleasesBucketName, *promoteTestReleasesPlatform)
+		err := update.PromoteTestReleases(*promoteTestReleasesBucketName, *promoteTestReleasesPlatform, *promoteTestReleasesRelease)
 		if err != nil {
 			log.Fatal(err)
 		}
