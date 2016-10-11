@@ -398,12 +398,12 @@ func (c *Client) CurrentUpdate(bucketName string, channel string, platformName s
 	return
 }
 
-func promoteRelease(bucketName string, delay time.Duration, hourEastern int, toChannel string, platform Platform, env string, allowDowngrade bool) (*Release, error) {
+func promoteRelease(bucketName string, delay time.Duration, hourEastern int, toChannel string, platform Platform, env string, allowDowngrade bool, release string) (*Release, error) {
 	client, err := NewClient()
 	if err != nil {
 		return nil, err
 	}
-	return client.PromoteRelease(bucketName, delay, hourEastern, toChannel, platform, env, allowDowngrade)
+	return client.PromoteRelease(bucketName, delay, hourEastern, toChannel, platform, env, allowDowngrade, release)
 }
 
 func updateJSONName(channel string, platformName string, env string) string {
@@ -460,19 +460,30 @@ func (c *Client) promoteDarwinReleaseToProd(releaseName string, bucketName strin
 }
 
 // PromoteRelease promotes a release to a channel
-func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHourEastern int, toChannel string, platform Platform, env string, allowDowngrade bool) (*Release, error) {
+func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHourEastern int, toChannel string, platform Platform, env string, allowDowngrade bool, releaseName string) (*Release, error) {
 	log.Printf("Finding release to promote to %q (%s delay)", toChannel, delay)
-	release, err := platform.FindRelease(bucketName, func(r Release) bool {
-		log.Printf("Checking release date %s", r.Date)
-		if delay != 0 && time.Since(r.Date) < delay {
-			return false
-		}
-		hour, _, _ := r.Date.Clock()
-		if beforeHourEastern != 0 && hour >= beforeHourEastern {
-			return false
-		}
-		return true
-	})
+	var release *Release
+	var err error
+
+	if releaseName != "" {
+		releaseName = fmt.Sprintf("Keybase-%s.dmg", releaseName)
+		release, err = platform.FindRelease(bucketName, func(r Release) bool {
+			return r.Name == releaseName
+		})
+	} else {
+		release, err = platform.FindRelease(bucketName, func(r Release) bool {
+			log.Printf("Checking release date %s", r.Date)
+			if delay != 0 && time.Since(r.Date) < delay {
+				return false
+			}
+			hour, _, _ := r.Date.Clock()
+			if beforeHourEastern != 0 && hour >= beforeHourEastern {
+				return false
+			}
+			return true
+		})
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -585,8 +596,8 @@ func Report(bucketName string, writer io.Writer) error {
 }
 
 // promoteTestReleaseForDarwin creates a test release for darwin
-func promoteTestReleaseForDarwin(bucketName string) (*Release, error) {
-	return promoteRelease(bucketName, time.Duration(0), 0, "test-v2", platformDarwin, "prod", true)
+func promoteTestReleaseForDarwin(bucketName string, release string) (*Release, error) {
+	return promoteRelease(bucketName, time.Duration(0), 0, "test-v2", platformDarwin, "prod", true, release)
 }
 
 // promoteTestReleaseForLinux creates a test release for linux
@@ -602,10 +613,10 @@ func promoteTestReleaseForWindows(bucketName string) error {
 }
 
 // PromoteTestReleases creates test releases for a platform
-func PromoteTestReleases(bucketName string, platformName string) error {
+func PromoteTestReleases(bucketName string, platformName string, release string) error {
 	switch platformName {
 	case PlatformTypeDarwin:
-		_, err := promoteTestReleaseForDarwin(bucketName)
+		_, err := promoteTestReleaseForDarwin(bucketName, release)
 		return err
 	case PlatformTypeLinux:
 		return promoteTestReleaseForLinux(bucketName)
@@ -620,7 +631,7 @@ func PromoteTestReleases(bucketName string, platformName string) error {
 func PromoteReleases(bucketName string, platform string) error {
 	switch platform {
 	case PlatformTypeDarwin:
-		release, err := promoteRelease(bucketName, time.Hour*27, 10, defaultChannel, platformDarwin, "prod", false)
+		release, err := promoteRelease(bucketName, time.Hour*27, 10, defaultChannel, platformDarwin, "prod", false, "")
 		if err != nil {
 			return err
 		}
@@ -683,7 +694,7 @@ func ReleaseBroken(releaseName string, bucketName string, platformName string) (
 		}
 
 		// Fix test releases if needed
-		if err := PromoteTestReleases(bucketName, platform.Name); err != nil {
+		if err := PromoteTestReleases(bucketName, platform.Name, ""); err != nil {
 			log.Printf("Error fixing test releases: %s", err)
 		}
 	}
