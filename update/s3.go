@@ -435,8 +435,6 @@ func PromoteARelease(releaseName string, bucketName string, platform string) err
 
 func (c *Client) promoteDarwinReleaseToProd(releaseName string, bucketName string, platform Platform, env string, toChannel string) error {
 	releaseName = fmt.Sprintf("Keybase-%s.dmg", releaseName)
-	var release *Release
-
 	release, err := platform.FindRelease(bucketName, func(r Release) bool {
 		return r.Name == releaseName
 	})
