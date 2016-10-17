@@ -125,10 +125,11 @@ var (
 	announceBuildB        = announceBuildCmd.Flag("build-b", "The second of the two IDs comprising the new build").Required().String()
 	announceBuildPlatform = announceBuildCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
 
-	setBuildInTestingCmd      = app.Command("set-build-in-testing", "Enroll or unenroll a build in smoketesting")
-	setBuildInTestingA        = setBuildInTestingCmd.Flag("build-a", "The first build's ID").Required().String()
-	setBuildInTestingPlatform = setBuildInTestingCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
-	setBuildInTestingEnable   = setBuildInTestingCmd.Flag("enable", "Enroll the build in smoketesting (boolish string)").Required().String()
+	setBuildInTestingCmd        = app.Command("set-build-in-testing", "Enroll or unenroll a build in smoketesting")
+	setBuildInTestingA          = setBuildInTestingCmd.Flag("build-a", "The first build's ID").Required().String()
+	setBuildInTestingPlatform   = setBuildInTestingCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
+	setBuildInTestingEnable     = setBuildInTestingCmd.Flag("enable", "Enroll the build in smoketesting (boolish string)").Required().String()
+	setBuildInTestingMaxTesters = setBuildInTestingCmd.Flag("max-testers", "Max number of testers for this build").Required().Int()
 )
 
 func main() {
@@ -258,7 +259,7 @@ func main() {
 			log.Fatal(err)
 		}
 	case setBuildInTestingCmd.FullCommand():
-		err := update.SetBuildInTesting(keybaseToken(true), *setBuildInTestingA, *setBuildInTestingPlatform, *setBuildInTestingEnable)
+		err := update.SetBuildInTesting(keybaseToken(true), *setBuildInTestingA, *setBuildInTestingPlatform, *setBuildInTestingEnable, *setBuildInTestingMaxTesters)
 		if err != nil {
 			log.Fatal(err)
 		}
