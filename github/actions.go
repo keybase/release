@@ -204,6 +204,18 @@ func WaitForCI(token string, repo string, commit string, contexts []string, dela
 		const errorStatus = "error"
 		log.Println("\t")
 		log.Println("\tMatch:")
+
+		// Fill in successes for all contexts first
+		for _, status := range statuses {
+			context := re.ReplaceAllString(status.Context, "$1")
+			if stringInSlice(context, contexts) && status.State == successStatus {
+				log.Printf("\t%s (success)", context)
+				matching[context] = status
+			}
+		}
+
+		// Check failures and errors. If we had a success for that context,
+		// we can ignore them. Otherwise we'll fail right away.
 		for _, status := range statuses {
 			context := re.ReplaceAllString(status.Context, "$1")
 			if stringInSlice(context, contexts) {
@@ -214,9 +226,6 @@ func WaitForCI(token string, repo string, commit string, contexts []string, dela
 						return fmt.Errorf("Failure in CI for %s", context)
 					}
 					log.Printf("\t%s (ignoring previous failure)", context)
-				case successStatus:
-					log.Printf("\t%s (success)", context)
-					matching[context] = status
 				}
 			}
 		}
