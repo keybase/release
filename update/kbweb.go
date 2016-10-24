@@ -140,21 +140,23 @@ func AnnounceBuild(keybaseToken string, buildA string, buildB string, platform s
 }
 
 type setBuildInTestingArgs struct {
-	VersionA  string `json:"version_a"`
-	Platform  string `json:"platform"`
-	InTesting string `json:"in_testing"`
+	VersionA   string `json:"version_a"`
+	Platform   string `json:"platform"`
+	InTesting  string `json:"in_testing"`
+	MaxTesters int    `json:"max_testers"`
 }
 
 // SetBuildInTesting tells the API server to enroll or unenroll a build in smoke testing.
-func SetBuildInTesting(keybaseToken string, buildA string, platform string, inTesting string) error {
+func SetBuildInTesting(keybaseToken string, buildA string, platform string, inTesting string, maxTesters int) error {
 	client, err := newKbwebClient()
 	if err != nil {
 		return fmt.Errorf("client create failed, %v", err)
 	}
 	args := &setBuildInTestingArgs{
-		VersionA:  buildA,
-		Platform:  platform,
-		InTesting: inTesting,
+		VersionA:   buildA,
+		Platform:   platform,
+		InTesting:  inTesting,
+		MaxTesters: maxTesters,
 	}
 	jsonStr, err := json.Marshal(args)
 	if err != nil {
