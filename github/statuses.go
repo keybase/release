@@ -16,8 +16,8 @@ const (
 )
 
 // Statuses lists statuses for a git commit
-func Statuses(user, repo, sha, token string) ([]Status, error) {
-	url, err := githubURL(githubAPIURL, token)
+func Statuses(user, repo, sha string) ([]Status, error) {
+	url, err := githubURL(githubAPIURL)
 	if err != nil {
 		return nil, err
 	}

@@ -17,15 +17,12 @@ const (
 	githubAPIURL = "https://api.github.com"
 )
 
-func githubURL(host string, token string) (u *url.URL, err error) {
+func githubURL(host string) (u *url.URL, err error) {
 	u, err = url.Parse(host)
 	if err != nil {
 		return
 	}
 	data := url.Values{}
-	if token != "" {
-		data.Set("access_token", token)
-	}
 	u.RawQuery = data.Encode()
 	return
 }

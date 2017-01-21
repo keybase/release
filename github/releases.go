@@ -52,7 +52,7 @@ type ReleaseCreate struct {
 
 // Releases returns releases for a repo
 func Releases(user, repo, token string) (releases []Release, err error) {
-	u, err := githubURL(githubAPIURL, token)
+	u, err := githubURL(githubAPIURL)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func Releases(user, repo, token string) (releases []Release, err error) {
 
 // LatestRelease returns latest release for repo
 func LatestRelease(user, repo, token string) (release *Release, err error) {
-	u, err := githubURL(githubAPIURL, token)
+	u, err := githubURL(githubAPIURL)
 	if err != nil {
 		return
 	}

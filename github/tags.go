@@ -16,7 +16,7 @@ type Tag struct {
 
 // Tags returns tags for a repo
 func Tags(user, repo, token string) (tags []Tag, err error) {
-	u, err := githubURL(githubAPIURL, token)
+	u, err := githubURL(githubAPIURL)
 	if err != nil {
 		return nil, err
 	}
