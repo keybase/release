@@ -586,12 +586,8 @@ func Report(bucketName string, writer io.Writer) error {
 	fmt.Fprintln(tw, "Platform\tChannel\tVersion\tCreated\tSource")
 	client.report(tw, bucketName, "test-v2", PlatformTypeDarwin)
 	client.report(tw, bucketName, "v2", PlatformTypeDarwin)
-	client.report(tw, bucketName, "test", PlatformTypeDarwin)
-	client.report(tw, bucketName, "", PlatformTypeDarwin)
 	client.report(tw, bucketName, "test", PlatformTypeLinux)
 	client.report(tw, bucketName, "", PlatformTypeLinux)
-	client.report(tw, bucketName, "test", PlatformTypeWindows)
-	client.report(tw, bucketName, "", PlatformTypeWindows)
 	return tw.Flush()
 }
 
