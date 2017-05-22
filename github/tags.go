@@ -21,7 +21,7 @@ func Tags(user, repo, token string) (tags []Tag, err error) {
 		return nil, err
 	}
 	u.Path = fmt.Sprintf(tagListPath, user, repo)
-	err = Get(u.String(), &tags)
+	err = Get(token, u.String(), &tags)
 	if err != nil {
 		return
 	}

@@ -57,7 +57,7 @@ func Releases(user, repo, token string) (releases []Release, err error) {
 		return nil, err
 	}
 	u.Path = fmt.Sprintf(releaseListPath, user, repo)
-	err = Get(u.String(), &releases)
+	err = Get(token, u.String(), &releases)
 	if err != nil {
 		return
 	}
@@ -71,7 +71,7 @@ func LatestRelease(user, repo, token string) (release *Release, err error) {
 		return
 	}
 	u.Path = fmt.Sprintf(releaseLatestPath, user, repo)
-	err = Get(u.String(), &release)
+	err = Get(token, u.String(), &release)
 	return
 }
 

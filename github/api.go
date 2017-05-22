@@ -107,18 +107,7 @@ func DoAuthRequest(method, url, bodyType, token string, headers map[string]strin
 }
 
 // Get does a GET request to the Github API
-func Get(url string, v interface{}) error {
-	resp, err := http.Get(url)
-	if resp != nil {
-		defer func() { _ = resp.Body.Close() }()
-	}
-	if err != nil {
-		return fmt.Errorf("Error in http Get %v", err)
-	}
-	return get(resp, url, v)
-}
-
-func GetAuth(token string, url string, v interface{}) error {
+func Get(token string, url string, v interface{}) error {
 	resp, err := DoAuthRequest("GET", url, "", token, nil, nil)
 	if resp != nil {
 		defer func() { _ = resp.Body.Close() }()

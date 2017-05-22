@@ -23,7 +23,7 @@ func Statuses(token, user, repo, sha string) ([]Status, error) {
 	}
 	url.Path = fmt.Sprintf(statusesListPath, user, repo, sha)
 	var statuses []Status
-	if err = GetAuth(token, url.String(), &statuses); err != nil {
+	if err = Get(token, url.String(), &statuses); err != nil {
 		return nil, err
 	}
 	return statuses, nil

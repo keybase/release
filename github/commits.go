@@ -22,7 +22,7 @@ func Commits(user, repo, token string) ([]Commit, error) {
 	}
 	url.Path = fmt.Sprintf(commitListPath, user, repo)
 	var commits []Commit
-	if err = Get(url.String(), &commits); err != nil {
+	if err = Get(token, url.String(), &commits); err != nil {
 		return nil, err
 	}
 	return commits, nil
