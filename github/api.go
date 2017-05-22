@@ -113,17 +113,30 @@ func Get(url string, v interface{}) error {
 		defer func() { _ = resp.Body.Close() }()
 	}
 	if err != nil {
-		return fmt.Errorf("could not fetch releases, %v", err)
+		return fmt.Errorf("Error in http Get %v", err)
 	}
+	return get(resp, url, v)
+}
 
+func GetAuth(token string, url string, v interface{}) error {
+	resp, err := DoAuthRequest("GET", url, "", token, nil, nil)
+	if resp != nil {
+		defer func() { _ = resp.Body.Close() }()
+	}
+	if err != nil {
+		return fmt.Errorf("Error in http Get %v", err)
+	}
+	return get(resp, url, v)
+}
+
+func get(resp *http.Response, url, v interface{}) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("%s responded with %v", url, resp.Status)
 	}
 
 	var r io.Reader = resp.Body
-	if err = json.NewDecoder(r).Decode(v); err != nil {
+	if err := json.NewDecoder(r).Decode(v); err != nil {
 		return fmt.Errorf("could not unmarshall JSON into Release struct, %v", err)
 	}
-
 	return nil
 }

@@ -16,14 +16,14 @@ const (
 )
 
 // Statuses lists statuses for a git commit
-func Statuses(user, repo, sha string) ([]Status, error) {
+func Statuses(token, user, repo, sha string) ([]Status, error) {
 	url, err := githubURL(githubAPIURL)
 	if err != nil {
 		return nil, err
 	}
 	url.Path = fmt.Sprintf(statusesListPath, user, repo, sha)
 	var statuses []Status
-	if err = Get(url.String(), &statuses); err != nil {
+	if err = GetAuth(token, url.String(), &statuses); err != nil {
 		return nil, err
 	}
 	return statuses, nil

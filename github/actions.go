@@ -151,7 +151,7 @@ func LatestCommit(token string, repo string, contexts []string) (*Commit, error)
 
 	for _, commit := range commits {
 		log.Printf("Checking %s", commit.SHA)
-		statuses, err := Statuses("keybase", repo, commit.SHA)
+		statuses, err := Statuses(token, "keybase", repo, commit.SHA)
 		if err != nil {
 			return nil, err
 		}
@@ -190,7 +190,7 @@ func WaitForCI(token string, repo string, commit string, contexts []string, dela
 	re := regexp.MustCompile("(.*)(/label=.*)")
 	for time.Since(start) < timeout {
 		log.Printf("Checking status for %s, %q (%s)", repo, contexts, commit)
-		statuses, err := Statuses("keybase", repo, commit)
+		statuses, err := Statuses(token, "keybase", repo, commit)
 		if err != nil {
 			return err
 		}
