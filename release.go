@@ -130,6 +130,10 @@ var (
 	setBuildInTestingPlatform   = setBuildInTestingCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
 	setBuildInTestingEnable     = setBuildInTestingCmd.Flag("enable", "Enroll the build in smoketesting (boolish string)").Required().String()
 	setBuildInTestingMaxTesters = setBuildInTestingCmd.Flag("max-testers", "Max number of testers for this build").Required().Int()
+
+	ciStatusesCmd    = app.Command("ci-statuses", "List statuses for CI")
+	ciStatusesRepo   = ciStatusesCmd.Flag("repo", "Repository name").Required().String()
+	ciStatusesCommit = ciStatusesCmd.Flag("commit", "Commit").Required().String()
 )
 
 func main() {
@@ -260,6 +264,11 @@ func main() {
 		}
 	case setBuildInTestingCmd.FullCommand():
 		err := update.SetBuildInTesting(keybaseToken(true), *setBuildInTestingA, *setBuildInTestingPlatform, *setBuildInTestingEnable, *setBuildInTestingMaxTesters)
+		if err != nil {
+			log.Fatal(err)
+		}
+	case ciStatusesCmd.FullCommand():
+		err := gh.CIStatuses(githubToken(true), *ciStatusesRepo, *ciStatusesCommit)
 		if err != nil {
 			log.Fatal(err)
 		}

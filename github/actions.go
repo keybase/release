@@ -184,6 +184,20 @@ func stringInSlice(str string, list []string) bool {
 	return false
 }
 
+// CIStatuses lists statuses for CI
+func CIStatuses(token string, repo string, commit string) error {
+	log.Printf("Statuses for %s, %q\n", repo, commit)
+	statuses, err := Statuses(token, "keybase", repo, commit)
+	if err != nil {
+		return err
+	}
+	log.Println("\tStatuses:")
+	for _, status := range statuses {
+		log.Printf("\t%s (%s)", status.Context, status.State)
+	}
+	return nil
+}
+
 // WaitForCI waits for commit in repo to pass CI contexts
 func WaitForCI(token string, repo string, commit string, contexts []string, delay time.Duration, timeout time.Duration) error {
 	start := time.Now()
