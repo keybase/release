@@ -274,21 +274,58 @@ func Platforms(name string) ([]Platform, error) {
 	}
 }
 
-// FindRelease searches for a release matching a predicate
-func (p *Platform) FindRelease(bucketName string, f func(r Release) bool) (*Release, error) {
+func listAllObjects(bucketName string, prefix string) ([]*s3.Object, error) {
 	client, err := NewClient()
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.svc.ListObjects(&s3.ListObjectsInput{
-		Bucket: aws.String(bucketName),
-		Prefix: aws.String(p.Prefix),
-	})
+
+	marker := ""
+	objs := make([]*s3.Object, 0, 1000)
+	for {
+		resp, err := client.svc.ListObjects(&s3.ListObjectsInput{
+			Bucket:    aws.String(bucketName),
+			Delimiter: aws.String("/"),
+			Prefix:    aws.String(prefix),
+			Marker:    aws.String(marker),
+		})
+		if err != nil {
+			return nil, err
+		}
+		if resp == nil {
+			break
+		}
+
+		out := *resp
+		nextMarker := ""
+		truncated := false
+		if out.NextMarker != nil {
+			nextMarker = *out.NextMarker
+		}
+		if out.IsTruncated != nil {
+			truncated = *out.IsTruncated
+		}
+
+		objs = append(objs, out.Contents...)
+		if !truncated {
+			break
+		}
+
+		log.Printf("Response is truncated, next marker is %s\n", nextMarker)
+		marker = nextMarker
+	}
+
+	return objs, nil
+}
+
+// FindRelease searches for a release matching a predicate
+func (p *Platform) FindRelease(bucketName string, f func(r Release) bool) (*Release, error) {
+	contents, err := listAllObjects(bucketName, p.Prefix)
 	if err != nil {
 		return nil, err
 	}
 
-	releases := loadReleases(resp.Contents, bucketName, p.Prefix, p.Suffix, 0)
+	releases := loadReleases(contents, bucketName, p.Prefix, p.Suffix, 0)
 	for _, release := range releases {
 		if !strings.HasSuffix(release.Key, p.Suffix) {
 			continue
