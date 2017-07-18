@@ -117,19 +117,15 @@ func loadReleases(objects []*s3.Object, bucketName string, prefix string, suffix
 
 // WriteHTML creates an html file for releases
 func WriteHTML(bucketName string, prefixes string, suffix string, outPath string, uploadDest string) error {
-	client, err := NewClient()
-	if err != nil {
-		return err
-	}
-
 	var sections []Section
 	for _, prefix := range strings.Split(prefixes, ",") {
-		resp, listErr := client.svc.ListObjects(&s3.ListObjectsInput{Bucket: aws.String(bucketName), Prefix: aws.String(prefix)})
+
+		objs, listErr := listAllObjects(bucketName, prefix)
 		if listErr != nil {
 			return listErr
 		}
 
-		releases := loadReleases(resp.Contents, bucketName, prefix, suffix, 50)
+		releases := loadReleases(objs, bucketName, prefix, suffix, 50)
 		if len(releases) > 0 {
 			log.Printf("Found %d release(s) at %s\n", len(releases), prefix)
 			// for _, release := range releases {
@@ -143,7 +139,7 @@ func WriteHTML(bucketName string, prefixes string, suffix string, outPath string
 	}
 
 	var buf bytes.Buffer
-	err = WriteHTMLForLinks(bucketName, sections, &buf)
+	err := WriteHTMLForLinks(bucketName, sections, &buf)
 	if err != nil {
 		return err
 	}
