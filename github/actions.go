@@ -151,7 +151,7 @@ func LatestCommit(token string, repo string, contexts []string) (*Commit, error)
 
 	for _, commit := range commits {
 		log.Printf("Checking %s", commit.SHA)
-		statuses, err := Statuses(token, "keybase", repo, commit.SHA)
+		statuses, err := getStatuses(token, "keybase", repo, commit.SHA)
 		if err != nil {
 			return nil, err
 		}
@@ -187,7 +187,7 @@ func stringInSlice(str string, list []string) bool {
 // CIStatuses lists statuses for CI
 func CIStatuses(token string, repo string, commit string) error {
 	log.Printf("Statuses for %s, %q\n", repo, commit)
-	statuses, err := Statuses(token, "keybase", repo, commit)
+	statuses, err := getStatuses(token, "keybase", repo, commit)
 	if err != nil {
 		return err
 	}
@@ -204,23 +204,27 @@ func WaitForCI(token string, repo string, commit string, contexts []string, dela
 	re := regexp.MustCompile("(.*)(/label=.*)")
 	for time.Since(start) < timeout {
 		log.Printf("Checking status for %s, %q (%s)", repo, contexts, commit)
-		statuses, err := Statuses(token, "keybase", repo, commit)
+		statuses, err := overallStatus(token, "keybase", repo, commit)
 		if err != nil {
 			return err
-		}
-		matching := map[string]Status{}
-		log.Println("\tStatuses:")
-		for _, status := range statuses {
-			log.Printf("\t%s (%s)", status.Context, status.State)
 		}
 		const successStatus = "success"
 		const failureStatus = "failure"
 		const errorStatus = "error"
+
+		// See if the topmost, overall status has passed
+		log.Println("\tOverall:", statuses.State)
+
+		matching := map[string]Status{}
+		log.Println("\tStatuses:")
+		for _, status := range statuses.Statuses {
+			log.Printf("\t%s (%s)", status.Context, status.State)
+		}
 		log.Println("\t")
 		log.Println("\tMatch:")
 
 		// Fill in successes for all contexts first
-		for _, status := range statuses {
+		for _, status := range statuses.Statuses {
 			context := re.ReplaceAllString(status.Context, "$1")
 			if stringInSlice(context, contexts) && status.State == successStatus {
 				log.Printf("\t%s (success)", context)
@@ -230,7 +234,7 @@ func WaitForCI(token string, repo string, commit string, contexts []string, dela
 
 		// Check failures and errors. If we had a success for that context,
 		// we can ignore them. Otherwise we'll fail right away.
-		for _, status := range statuses {
+		for _, status := range statuses.Statuses {
 			context := re.ReplaceAllString(status.Context, "$1")
 			if stringInSlice(context, contexts) {
 				switch status.State {
