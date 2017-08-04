@@ -18,7 +18,7 @@ type Statuses struct {
 }
 
 const (
-	statusesListPath = "/repos/%s/%s/commits/%s/statuses"
+	statusesListPath = "/repos/%s/%s/statuses/%s"
 	statusListPath   = "/repos/%s/%s/commits/%s/status"
 )
 
@@ -30,7 +30,7 @@ func getStatuses(token, user, repo, sha string) ([]Status, error) {
 	}
 	url.Path = fmt.Sprintf(statusesListPath, user, repo, sha)
 	var statuses []Status
-	if err = Get(token, url.String(), &statuses); err != nil {
+	if err = Get(token, url.String()+"?per_page=100", &statuses); err != nil {
 		return nil, err
 	}
 	return statuses, nil
