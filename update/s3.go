@@ -769,7 +769,7 @@ func SaveLog(bucketName string, localPath string, maxNumBytes int64) (string, er
 	if err != nil {
 		return "", err
 	}
-	uploadDest := filepath.Join("logs", fmt.Sprintf("%s-%s%s", filename, logID, ".txt"))
+	uploadDest := filepath.ToSlash(filepath.Join("logs", fmt.Sprintf("%s-%s%s", filename, logID, ".txt")))
 
 	_, err = client.svc.PutObject(&s3.PutObjectInput{
 		Bucket:        aws.String(bucketName),
