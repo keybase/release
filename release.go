@@ -13,6 +13,7 @@ import (
 	gh "github.com/keybase/release/github"
 	"github.com/keybase/release/update"
 	"github.com/keybase/release/version"
+	"github.com/keybase/release/winbuild"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -134,6 +135,9 @@ var (
 	ciStatusesCmd    = app.Command("ci-statuses", "List statuses for CI")
 	ciStatusesRepo   = ciStatusesCmd.Flag("repo", "Repository name").Required().String()
 	ciStatusesCommit = ciStatusesCmd.Flag("commit", "Commit").Required().String()
+
+	getWinBuildNumberCmd     = app.Command("winbuildnumber", "Atomically retrieve and increment build number for given version")
+	getWinBuildNumberVersion = getWinBuildNumberCmd.Flag("version", "Major version, e.g. 1.0.30").Required().String()
 )
 
 func main() {
@@ -269,6 +273,11 @@ func main() {
 		}
 	case ciStatusesCmd.FullCommand():
 		err := gh.CIStatuses(githubToken(true), *ciStatusesRepo, *ciStatusesCommit)
+		if err != nil {
+			log.Fatal(err)
+		}
+	case getWinBuildNumberCmd.FullCommand():
+		err := winbuild.GetNextBuildNumber(keybaseToken(true), *getWinBuildNumberVersion)
 		if err != nil {
 			log.Fatal(err)
 		}
