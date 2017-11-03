@@ -136,8 +136,10 @@ var (
 	ciStatusesRepo   = ciStatusesCmd.Flag("repo", "Repository name").Required().String()
 	ciStatusesCommit = ciStatusesCmd.Flag("commit", "Commit").Required().String()
 
-	getWinBuildNumberCmd     = app.Command("winbuildnumber", "Atomically retrieve and increment build number for given version")
-	getWinBuildNumberVersion = getWinBuildNumberCmd.Flag("version", "Major version, e.g. 1.0.30").Required().String()
+	getWinBuildNumberCmd      = app.Command("winbuildnumber", "Atomically retrieve and increment build number for given version")
+	getWinBuildNumberVersion  = getWinBuildNumberCmd.Flag("version", "Major version, e.g. 1.0.30").Required().String()
+	getWinBuildNumberBotID    = getWinBuildNumberCmd.Flag("botid", "bot ID").Default("1").String()
+	getWinBuildNumberPlatform = getWinBuildNumberCmd.Flag("platform", "platform").Default("1").String()
 )
 
 func main() {
@@ -277,7 +279,7 @@ func main() {
 			log.Fatal(err)
 		}
 	case getWinBuildNumberCmd.FullCommand():
-		err := winbuild.GetNextBuildNumber(keybaseToken(true), *getWinBuildNumberVersion)
+		err := winbuild.GetNextBuildNumber(keybaseToken(true), *getWinBuildNumberVersion, *getWinBuildNumberBotID, *getWinBuildNumberPlatform)
 		if err != nil {
 			log.Fatal(err)
 		}

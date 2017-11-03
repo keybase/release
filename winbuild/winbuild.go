@@ -13,7 +13,7 @@ const (
 	buildNumAPIUrl = "https://keybase.io/_/api/1.0/pkg/build_number.json"
 )
 
-type buildNoResponse struct {
+type buildNumberResponse struct {
 	Status struct {
 		Code int    `json:"code"`
 		Name string `json:"name"`
@@ -21,12 +21,12 @@ type buildNoResponse struct {
 	BuildNumber int `json:"build_number"`
 }
 
-func GetNextBuildNumber(keybaseToken string, version string) error {
+func GetNextBuildNumber(keybaseToken string, version string, botId string, platform string) error {
 
 	form := url.Values{}
 	form.Set("version", version)
-	form.Add("bot_id", "1")
-	form.Add("platform", "1")
+	form.Add("bot_id", botId)
+	form.Add("platform", platform)
 	req, err := http.NewRequest("POST", buildNumAPIUrl, bytes.NewBufferString(form.Encode()))
 	if err != nil {
 		return fmt.Errorf("newrequest failed, %v", err)
@@ -45,7 +45,7 @@ func GetNextBuildNumber(keybaseToken string, version string) error {
 		return fmt.Errorf("body err, %v", err)
 	}
 
-	var reply buildNoResponse
+	var reply buildNumberResponse
 	if err := json.Unmarshal(body, &reply); err != nil {
 		return fmt.Errorf("json reply err, %v", err)
 	}
