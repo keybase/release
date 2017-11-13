@@ -109,6 +109,7 @@ var (
 	saveLogBucketName = saveLogCmd.Flag("bucket-name", "Bucket name to use").Required().String()
 	saveLogPath       = saveLogCmd.Flag("path", "File to save").Required().String()
 	saveLogNoErr      = saveLogCmd.Flag("noerr", "No error status on failure").Bool()
+	saveLogMaxSize    = saveLogCmd.Flag("maxsize", "Max size, (default 102400)").Default("102400").Int64()
 
 	latestCommitCmd      = app.Command("latest-commit", "Latests commit we can use to safely build from")
 	latestCommitRepo     = latestCommitCmd.Flag("repo", "Repository name").Required().String()
@@ -243,7 +244,8 @@ func main() {
 			log.Fatal(err)
 		}
 	case saveLogCmd.FullCommand():
-		url, err := update.SaveLog(*saveLogBucketName, *saveLogPath, 100*1024)
+
+		url, err := update.SaveLog(*saveLogBucketName, *saveLogPath, *saveLogMaxSize)
 		if err != nil {
 			if *saveLogNoErr {
 				log.Printf("%s", err)
