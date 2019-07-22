@@ -222,10 +222,11 @@ func main() {
 		if release == nil {
 			log.Print("Not notifying API server of release")
 		} else {
-			err = update.KBWebPromote(keybaseToken(true), release.Version, *promoteReleasesPlatform)
+			releaseTime, err := update.KBWebPromote(keybaseToken(true), release.Version, *promoteReleasesPlatform)
 			if err != nil {
 				log.Fatal(err)
 			}
+			log.Printf("Release time set to %v for build %v", releaseTime, release.Version)
 		}
 	case promoteAReleaseCmd.FullCommand():
 		release, err := update.PromoteARelease(*releaseToPromote, *promoteAReleaseBucketName, *promoteAReleasePlatform)
@@ -239,10 +240,11 @@ func main() {
 		if release == nil {
 			log.Fatal("No release found")
 		} else {
-			err = update.KBWebPromote(keybaseToken(true), release.Version, *promoteAReleasePlatform)
+			releaseTime, err := update.KBWebPromote(keybaseToken(true), release.Version, *promoteAReleasePlatform)
 			if err != nil {
 				log.Fatal(err)
 			}
+			log.Printf("Release time set to %v for build %v", releaseTime, release.Version)
 		}
 	case promoteTestReleasesCmd.FullCommand():
 		err := update.PromoteTestReleases(*promoteTestReleasesBucketName, *promoteTestReleasesPlatform, *promoteTestReleasesRelease)
