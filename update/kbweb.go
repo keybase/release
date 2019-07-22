@@ -139,6 +139,29 @@ func AnnounceBuild(keybaseToken string, buildA string, buildB string, platform s
 	return client.post(keybaseToken, "/_/api/1.0/pkg/add_build.json", data)
 }
 
+type promoteBuildArgs struct {
+	VersionA string `json:"version_a"`
+	Platform string `json:"platform"`
+}
+
+// KBWebPromote tells the API server that a new build is promoted.
+func KBWebPromote(keybaseToken string, buildA string, platform string) error {
+	client, err := newKbwebClient()
+	if err != nil {
+		return fmt.Errorf("client create failed, %v", err)
+	}
+	args := &promoteBuildArgs{
+		VersionA: buildA,
+		Platform: platform,
+	}
+	jsonStr, err := json.Marshal(args)
+	if err != nil {
+		return fmt.Errorf("json marshal err, %v", err)
+	}
+	var data = []byte(jsonStr)
+	return client.post(keybaseToken, "/_/api/1.0/pkg/set_released.json", data)
+}
+
 type setBuildInTestingArgs struct {
 	VersionA   string `json:"version_a"`
 	Platform   string `json:"platform"`
