@@ -157,7 +157,7 @@ type promoteBuildArgs struct {
 
 type promoteBuildResponse struct {
 	AppResponseBase
-	ReleaseTime time.Time `json:"release_time"`
+	ReleaseTimeMs int64 `json:"release_time"`
 }
 
 // KBWebPromote tells the API server that a new build is promoted.
@@ -180,7 +180,7 @@ func KBWebPromote(keybaseToken string, buildA string, platform string) (releaseT
 	if err != nil {
 		return releaseTime, err
 	}
-	return response.ReleaseTime, nil
+	return time.Unix(0, response.ReleaseTimeMs*int64(time.Millisecond)), nil
 }
 
 type setBuildInTestingArgs struct {
