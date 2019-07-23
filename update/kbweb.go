@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 const (
@@ -60,11 +61,19 @@ type kbwebClient struct {
 	http *http.Client
 }
 
-type kbwebReply struct {
+type APIResponseWrapper interface {
+	StatusCode() int
+}
+
+type AppResponseBase struct {
 	Status struct {
 		Code int
 		Desc string
 	}
+}
+
+func (s *AppResponseBase) StatusCode() int {
+	return s.Status.Code
 }
 
 // newKbwebClient constructs a Client
@@ -82,7 +91,7 @@ func newKbwebClient() (*kbwebClient, error) {
 	return &kbwebClient{http: client}, nil
 }
 
-func (client *kbwebClient) post(keybaseToken string, path string, data []byte) error {
+func (client *kbwebClient) post(keybaseToken string, path string, data []byte, response APIResponseWrapper) error {
 	req, err := http.NewRequest("POST", kbwebAPIUrl+path, bytes.NewBuffer(data))
 	if err != nil {
 		return fmt.Errorf("newrequest failed, %v", err)
@@ -100,12 +109,14 @@ func (client *kbwebClient) post(keybaseToken string, path string, data []byte) e
 		return fmt.Errorf("body err, %v", err)
 	}
 
-	reply := &kbwebReply{}
-	if err := json.Unmarshal(body, reply); err != nil {
+	if response == nil {
+		response = new(AppResponseBase)
+	}
+	if err := json.Unmarshal(body, &response); err != nil {
 		return fmt.Errorf("json reply err, %v", err)
 	}
 
-	if reply.Status.Code != 0 {
+	if response.StatusCode() != 0 {
 		return fmt.Errorf("Server returned failure, %s", body)
 	}
 
@@ -136,7 +147,40 @@ func AnnounceBuild(keybaseToken string, buildA string, buildB string, platform s
 		return fmt.Errorf("json marshal err, %v", err)
 	}
 	var data = []byte(jsonStr)
-	return client.post(keybaseToken, "/_/api/1.0/pkg/add_build.json", data)
+	return client.post(keybaseToken, "/_/api/1.0/pkg/add_build.json", data, nil)
+}
+
+type promoteBuildArgs struct {
+	VersionA string `json:"version_a"`
+	Platform string `json:"platform"`
+}
+
+type promoteBuildResponse struct {
+	AppResponseBase
+	ReleaseTimeMs int64 `json:"release_time"`
+}
+
+// KBWebPromote tells the API server that a new build is promoted.
+func KBWebPromote(keybaseToken string, buildA string, platform string) (releaseTime time.Time, err error) {
+	client, err := newKbwebClient()
+	if err != nil {
+		return releaseTime, fmt.Errorf("client create failed, %v", err)
+	}
+	args := &promoteBuildArgs{
+		VersionA: buildA,
+		Platform: platform,
+	}
+	jsonStr, err := json.Marshal(args)
+	if err != nil {
+		return releaseTime, fmt.Errorf("json marshal err, %v", err)
+	}
+	var data = []byte(jsonStr)
+	var response promoteBuildResponse
+	err = client.post(keybaseToken, "/_/api/1.0/pkg/set_released.json", data, &response)
+	if err != nil {
+		return releaseTime, err
+	}
+	return time.Unix(0, response.ReleaseTimeMs*int64(time.Millisecond)), nil
 }
 
 type setBuildInTestingArgs struct {
@@ -163,5 +207,5 @@ func SetBuildInTesting(keybaseToken string, buildA string, platform string, inTe
 		return fmt.Errorf("json marshal err: %v", err)
 	}
 	var data = []byte(jsonStr)
-	return client.post(keybaseToken, "/_/api/1.0/pkg/set_in_testing.json", data)
+	return client.post(keybaseToken, "/_/api/1.0/pkg/set_in_testing.json", data, nil)
 }

@@ -447,35 +447,35 @@ func updateJSONName(channel string, platformName string, env string) string {
 }
 
 // PromoteARelease promotes a specific release to Darwin Prod.
-func PromoteARelease(releaseName string, bucketName string, platform string) error {
+func PromoteARelease(releaseName string, bucketName string, platform string) (release *Release, err error) {
 	if platform != PlatformTypeDarwin {
-		return fmt.Errorf("Promoting releases is only supported for darwin")
+		return nil, fmt.Errorf("Promoting releases is only supported for darwin")
 	}
 
-	client, nerr := NewClient()
-	if nerr != nil {
-		return nerr
+	client, err := NewClient()
+	if err != nil {
+		return nil, err
 	}
 
-	cerr := client.promoteDarwinReleaseToProd(releaseName, bucketName, platformDarwin, "prod", defaultChannel)
-	if cerr != nil {
-		return cerr
+	release, err = client.promoteDarwinReleaseToProd(releaseName, bucketName, platformDarwin, "prod", defaultChannel)
+	if err != nil {
+		return nil, err
 	}
 
 	log.Printf("Promoted (darwin) release: %s\n", releaseName)
-	return nil
+	return release, nil
 }
 
-func (c *Client) promoteDarwinReleaseToProd(releaseName string, bucketName string, platform Platform, env string, toChannel string) error {
+func (c *Client) promoteDarwinReleaseToProd(releaseName string, bucketName string, platform Platform, env string, toChannel string) (release *Release, err error) {
 	releaseName = fmt.Sprintf("Keybase-%s.dmg", releaseName)
-	release, err := platform.FindRelease(bucketName, func(r Release) bool {
+	release, err = platform.FindRelease(bucketName, func(r Release) bool {
 		return r.Name == releaseName
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if release == nil {
-		return fmt.Errorf("No matching release found")
+		return nil, fmt.Errorf("No matching release found")
 	}
 	log.Printf("Found release %s (%s), %s", release.Name, time.Since(release.Date), release.Version)
 	jsonName := updateJSONName(toChannel, platform.Name, env)
@@ -489,7 +489,7 @@ func (c *Client) promoteDarwinReleaseToProd(releaseName string, bucketName strin
 		CacheControl: aws.String(defaultCacheControl),
 		ACL:          aws.String("public-read"),
 	})
-	return err
+	return release, err
 }
 
 // PromoteRelease promotes a release to a channel
@@ -657,12 +657,12 @@ func PromoteTestReleases(bucketName string, platformName string, release string)
 }
 
 // PromoteReleases creates releases for a platform
-func PromoteReleases(bucketName string, platform string) error {
+func PromoteReleases(bucketName string, platform string) (release *Release, err error) {
 	switch platform {
 	case PlatformTypeDarwin:
-		release, err := promoteRelease(bucketName, time.Hour*27, 10, defaultChannel, platformDarwin, "prod", false, "")
+		release, err = promoteRelease(bucketName, time.Hour*27, 10, defaultChannel, platformDarwin, "prod", false, "")
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if release != nil {
 			log.Printf("Promoted (darwin) release: %s\n", release.Name)
@@ -671,8 +671,10 @@ func PromoteReleases(bucketName string, platform string) error {
 		log.Printf("Promoting releases is unsupported for linux")
 	case PlatformTypeWindows:
 		log.Printf("Promoting releases is unsupported for windows")
+	default:
+		log.Printf("Invalid platform %s", platform)
 	}
-	return nil
+	return release, nil
 }
 
 // ReleaseBroken marks a release as broken. The releaseName is the version,

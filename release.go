@@ -211,7 +211,7 @@ func main() {
 		log.Printf("%s\n", date)
 		log.Printf("%s\n", commit)
 	case promoteReleasesCmd.FullCommand():
-		err := update.PromoteReleases(*promoteReleasesBucketName, *promoteReleasesPlatform)
+		release, err := update.PromoteReleases(*promoteReleasesBucketName, *promoteReleasesPlatform)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -219,14 +219,32 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		if release == nil {
+			log.Print("Not notifying API server of release")
+		} else {
+			releaseTime, err := update.KBWebPromote(keybaseToken(true), release.Version, *promoteReleasesPlatform)
+			if err != nil {
+				log.Fatal(err)
+			}
+			log.Printf("Release time set to %v for build %v", releaseTime, release.Version)
+		}
 	case promoteAReleaseCmd.FullCommand():
-		err := update.PromoteARelease(*releaseToPromote, *promoteAReleaseBucketName, *promoteAReleasePlatform)
+		release, err := update.PromoteARelease(*releaseToPromote, *promoteAReleaseBucketName, *promoteAReleasePlatform)
 		if err != nil {
 			log.Fatal(err)
 		}
 		err = update.CopyLatest(*promoteAReleaseBucketName, *promoteAReleasePlatform)
 		if err != nil {
 			log.Fatal(err)
+		}
+		if release == nil {
+			log.Fatal("No release found")
+		} else {
+			releaseTime, err := update.KBWebPromote(keybaseToken(true), release.Version, *promoteAReleasePlatform)
+			if err != nil {
+				log.Fatal(err)
+			}
+			log.Printf("Release time set to %v for build %v", releaseTime, release.Version)
 		}
 	case promoteTestReleasesCmd.FullCommand():
 		err := update.PromoteTestReleases(*promoteTestReleasesBucketName, *promoteTestReleasesPlatform, *promoteTestReleasesRelease)
