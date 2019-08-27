@@ -69,7 +69,11 @@ type Client struct {
 
 // NewClient constructs a Client
 func NewClient() (*Client, error) {
-	svc := s3.New(session.New(&aws.Config{Region: aws.String("us-east-1")}))
+	sess, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
+	if err != nil {
+		return nil, err
+	}
+	svc := s3.New(sess)
 	return &Client{svc: svc}, nil
 }
 

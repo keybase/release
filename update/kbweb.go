@@ -146,7 +146,7 @@ func AnnounceBuild(keybaseToken string, buildA string, buildB string, platform s
 	if err != nil {
 		return fmt.Errorf("json marshal err, %v", err)
 	}
-	var data = []byte(jsonStr)
+	var data = jsonStr
 	return client.post(keybaseToken, "/_/api/1.0/pkg/add_build.json", data, nil)
 }
 
@@ -174,7 +174,7 @@ func KBWebPromote(keybaseToken string, buildA string, platform string) (releaseT
 	if err != nil {
 		return releaseTime, fmt.Errorf("json marshal err, %v", err)
 	}
-	var data = []byte(jsonStr)
+	var data = jsonStr
 	var response promoteBuildResponse
 	err = client.post(keybaseToken, "/_/api/1.0/pkg/set_released.json", data, &response)
 	if err != nil {
@@ -206,6 +206,6 @@ func SetBuildInTesting(keybaseToken string, buildA string, platform string, inTe
 	if err != nil {
 		return fmt.Errorf("json marshal err: %v", err)
 	}
-	var data = []byte(jsonStr)
+	var data = jsonStr
 	return client.post(keybaseToken, "/_/api/1.0/pkg/set_in_testing.json", data, nil)
 }
