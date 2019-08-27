@@ -19,7 +19,7 @@ import (
 )
 
 // EncodeJSON returns JSON (as bytes) for an update
-func EncodeJSON(version string, name string, descriptionPath string, props []string, src string, URI fmt.Stringer, signaturePath string) ([]byte, error) {
+func EncodeJSON(version string, name string, descriptionPath string, props []string, src string, uri fmt.Stringer, signaturePath string) ([]byte, error) {
 	upd := Update{
 		Version: version,
 		Name:    name,
@@ -32,7 +32,7 @@ func EncodeJSON(version string, name string, descriptionPath string, props []str
 		upd.PublishedAt = &t
 	}
 
-	if src != "" && URI != nil {
+	if src != "" && uri != nil {
 		fileName := path.Base(src)
 
 		// Or if we can't parse use the src file modification time
@@ -46,7 +46,7 @@ func EncodeJSON(version string, name string, descriptionPath string, props []str
 			upd.PublishedAt = &t
 		}
 
-		urlString := fmt.Sprintf("%s/%s", URI.String(), url.QueryEscape(fileName))
+		urlString := fmt.Sprintf("%s/%s", uri.String(), url.QueryEscape(fileName))
 		asset := Asset{
 			Name: fileName,
 			URL:  urlString,

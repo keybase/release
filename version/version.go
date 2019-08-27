@@ -11,7 +11,7 @@ import (
 
 // Parse parses version, time and commit info from string
 func Parse(name string) (version string, versionShort string, t time.Time, commit string, err error) {
-	versionRegex, _ := regexp.Compile(`(\d+\.\d+\.\d+)[-.](\d+)[+.]([[:alnum:]]+)`)
+	versionRegex := regexp.MustCompile(`(\d+\.\d+\.\d+)[-.](\d+)[+.]([[:alnum:]]+)`)
 	parts := versionRegex.FindAllStringSubmatch(name, -1)
 	if len(parts) == 0 || len(parts[0]) < 4 {
 		err = fmt.Errorf("Unable to parse: %s", name)

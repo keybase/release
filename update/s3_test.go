@@ -10,8 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TODO: Enable when we have test S3 credentials
-func testFindRelease(t *testing.T) {
+// TODO: Enable when we have test S3 credentials.
+// TODO: Remove // nolint
+func testFindRelease(t *testing.T) { // nolint
 	first := func(r Release) bool { return true }
 	release, err := platformDarwin.FindRelease("prerelease.keybase.io", first)
 	require.NoError(t, err)
