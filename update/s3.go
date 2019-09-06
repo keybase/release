@@ -450,10 +450,10 @@ func updateJSONName(channel string, platformName string, env string) string {
 	return fmt.Sprintf("update-%s-%s-%s.json", platformName, env, channel)
 }
 
-// PromoteARelease promotes a specific release to Darwin Prod.
+// PromoteARelease promotes a specific release to Prod.
 func PromoteARelease(releaseName string, bucketName string, platform string) (release *Release, err error) {
-	if platform != PlatformTypeDarwin {
-		return nil, fmt.Errorf("Promoting releases is only supported for darwin")
+	if platform != PlatformTypeDarwin && platform != PlatformTypeWindows {
+		return nil, fmt.Errorf("Promoting releases is only supported for darwin or windows")
 	}
 
 	client, err := NewClient()
@@ -461,7 +461,12 @@ func PromoteARelease(releaseName string, bucketName string, platform string) (re
 		return nil, err
 	}
 
-	release, err = client.promoteDarwinReleaseToProd(releaseName, bucketName, platformDarwin, "prod", defaultChannel)
+	platformRes, err := Platforms(platform)
+	if err != nil {
+		return nil, err
+	}
+	platformType = platformRes[0]
+	release, err = client.promoteDarwinReleaseToProd(releaseName, bucketName, platformType, "prod", defaultChannel)
 	if err != nil {
 		return nil, err
 	}
