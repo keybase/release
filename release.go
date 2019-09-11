@@ -91,6 +91,7 @@ var (
 	releaseToPromote          = promoteAReleaseCmd.Flag("release", "Specific release to promote to public").Required().String()
 	promoteAReleaseBucketName = promoteAReleaseCmd.Flag("bucket-name", "Bucket name to use").Required().String()
 	promoteAReleasePlatform   = promoteAReleaseCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
+	promoteAReleaseDryRun     = promoteAReleaseCmd.Flag("dry-run", "Announce what would be done without doing it").Bool()
 
 	brokenReleaseCmd          = app.Command("broken-release", "Mark a release as broken")
 	brokenReleaseName         = brokenReleaseCmd.Flag("release", "Release to mark as broken").Required().String()
@@ -211,40 +212,40 @@ func main() {
 		log.Printf("%s\n", date)
 		log.Printf("%s\n", commit)
 	case promoteReleasesCmd.FullCommand():
+		const dryRun bool = false
 		release, err := update.PromoteReleases(*promoteReleasesBucketName, *promoteReleasesPlatform)
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = update.CopyLatest(*promoteReleasesBucketName, *promoteReleasesPlatform)
+		err = update.CopyLatest(*promoteReleasesBucketName, *promoteReleasesPlatform, dryRun)
 		if err != nil {
 			log.Fatal(err)
 		}
 		if release == nil {
 			log.Print("Not notifying API server of release")
 		} else {
-			releaseTime, err := update.KBWebPromote(keybaseToken(true), release.Version, *promoteReleasesPlatform)
+			releaseTime, err := update.KBWebPromote(keybaseToken(true), release.Version, *promoteReleasesPlatform, dryRun)
 			if err != nil {
 				log.Fatal(err)
 			}
 			log.Printf("Release time set to %v for build %v", releaseTime, release.Version)
 		}
 	case promoteAReleaseCmd.FullCommand():
-		release, err := update.PromoteARelease(*releaseToPromote, *promoteAReleaseBucketName, *promoteAReleasePlatform)
+		release, err := update.PromoteARelease(*releaseToPromote, *promoteAReleaseBucketName, *promoteAReleasePlatform, *promoteAReleaseDryRun)
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = update.CopyLatest(*promoteAReleaseBucketName, *promoteAReleasePlatform)
+		err = update.CopyLatest(*promoteAReleaseBucketName, *promoteAReleasePlatform, *promoteAReleaseDryRun)
 		if err != nil {
 			log.Fatal(err)
 		}
 		if release == nil {
 			log.Fatal("No release found")
 		} else {
-			releaseTime, err := update.KBWebPromote(keybaseToken(true), release.Version, *promoteAReleasePlatform)
+			_, err := update.KBWebPromote(keybaseToken(!*promoteAReleaseDryRun), release.Version, *promoteAReleasePlatform, *promoteAReleaseDryRun)
 			if err != nil {
 				log.Fatal(err)
 			}
-			log.Printf("Release time set to %v for build %v", releaseTime, release.Version)
 		}
 	case promoteTestReleasesCmd.FullCommand():
 		err := update.PromoteTestReleases(*promoteTestReleasesBucketName, *promoteTestReleasesPlatform, *promoteTestReleasesRelease)

@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"time"
 )
@@ -161,7 +162,7 @@ type promoteBuildResponse struct {
 }
 
 // KBWebPromote tells the API server that a new build is promoted.
-func KBWebPromote(keybaseToken string, buildA string, platform string) (releaseTime time.Time, err error) {
+func KBWebPromote(keybaseToken string, buildA string, platform string, dryRun bool) (releaseTime time.Time, err error) {
 	client, err := newKbwebClient()
 	if err != nil {
 		return releaseTime, fmt.Errorf("client create failed, %v", err)
@@ -176,11 +177,17 @@ func KBWebPromote(keybaseToken string, buildA string, platform string) (releaseT
 	}
 	var data = jsonStr
 	var response promoteBuildResponse
+	if dryRun {
+		log.Printf("DRYRUN: Would post %s\n", data)
+		return releaseTime, nil
+	}
 	err = client.post(keybaseToken, "/_/api/1.0/pkg/set_released.json", data, &response)
 	if err != nil {
 		return releaseTime, err
 	}
-	return time.Unix(0, response.ReleaseTimeMs*int64(time.Millisecond)), nil
+	releaseTime = time.Unix(0, response.ReleaseTimeMs*int64(time.Millisecond))
+	log.Printf("Release time set to %v for build %v", releaseTime, buildA)
+	return releaseTime, nil
 }
 
 type setBuildInTestingArgs struct {

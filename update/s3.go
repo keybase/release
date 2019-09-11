@@ -229,12 +229,12 @@ type Platform struct {
 }
 
 // CopyLatest copies latest release to a fixed path
-func CopyLatest(bucketName string, platform string) error {
+func CopyLatest(bucketName string, platform string, dryRun bool) error {
 	client, err := NewClient()
 	if err != nil {
 		return err
 	}
-	return client.CopyLatest(bucketName, platform)
+	return client.CopyLatest(bucketName, platform, dryRun)
 }
 
 const (
@@ -249,7 +249,7 @@ const (
 var platformDarwin = Platform{Name: PlatformTypeDarwin, Prefix: "darwin/", PrefixSupport: "darwin-support/", LatestName: "Keybase.dmg"}
 var platformLinuxDeb = Platform{Name: "deb", Prefix: "linux_binaries/deb/", Suffix: "_amd64.deb", LatestName: "keybase_amd64.deb"}
 var platformLinuxRPM = Platform{Name: "rpm", Prefix: "linux_binaries/rpm/", Suffix: ".x86_64.rpm", LatestName: "keybase_amd64.rpm"}
-var platformWindows = Platform{Name: PlatformTypeWindows, Prefix: "windows/", Suffix: ".386.exe", LatestName: "keybase_setup_386.exe"}
+var platformWindows = Platform{Name: PlatformTypeWindows, Prefix: "windows/", Suffix: ".amd64.msi", LatestName: "keybase_setup_amd64.msi"}
 
 var platformsAll = []Platform{
 	platformDarwin,
@@ -357,7 +357,7 @@ func (p Platform) WriteHTML(bucketName string) error {
 }
 
 // CopyLatest copies latest release to a fixed path for the Client
-func (c *Client) CopyLatest(bucketName string, platform string) error {
+func (c *Client) CopyLatest(bucketName string, platform string, dryRun bool) error {
 	platforms, err := Platforms(platform)
 	if err != nil {
 		return err
@@ -365,8 +365,8 @@ func (c *Client) CopyLatest(bucketName string, platform string) error {
 	for _, platform := range platforms {
 		var url string
 		// Use update json to look for current DMG (for darwin)
-		// TODO: Fix for linux, windows
-		if platform.Name == PlatformTypeDarwin {
+		// TODO: Fix for linux
+		if platform.Name == PlatformTypeDarwin || platform.Name == PlatformTypeWindows {
 			url, err = c.copyFromUpdate(platform, bucketName)
 		} else {
 			_, url, err = c.copyFromReleases(platform, bucketName)
@@ -376,6 +376,11 @@ func (c *Client) CopyLatest(bucketName string, platform string) error {
 		}
 		if url == "" {
 			continue
+		}
+
+		if dryRun {
+			log.Printf("DRYRUN: Would copy latest %s to %s\n", url, platform.LatestName)
+			return nil
 		}
 
 		_, err := c.svc.CopyObject(&s3.CopyObjectInput{
@@ -405,6 +410,8 @@ func (c *Client) copyFromUpdate(platform Platform, bucketName string) (url strin
 	switch platform.Name {
 	case PlatformTypeDarwin:
 		url = urlString(bucketName, platform.Prefix, fmt.Sprintf("Keybase-%s.dmg", currentUpdate.Version))
+	case PlatformTypeWindows:
+		url = urlString(bucketName, platform.Prefix, fmt.Sprintf("Keybase_%s.amd64.msi", currentUpdate.Version))
 	default:
 		err = fmt.Errorf("Unsupported platform for copyFromUpdate")
 	}
@@ -450,10 +457,10 @@ func updateJSONName(channel string, platformName string, env string) string {
 	return fmt.Sprintf("update-%s-%s-%s.json", platformName, env, channel)
 }
 
-// PromoteARelease promotes a specific release to Darwin Prod.
-func PromoteARelease(releaseName string, bucketName string, platform string) (release *Release, err error) {
-	if platform != PlatformTypeDarwin {
-		return nil, fmt.Errorf("Promoting releases is only supported for darwin")
+// PromoteARelease promotes a specific release to Prod.
+func PromoteARelease(releaseName string, bucketName string, platform string, dryRun bool) (release *Release, err error) {
+	if platform != PlatformTypeDarwin && platform != PlatformTypeWindows {
+		return nil, fmt.Errorf("Promoting releases is only supported for darwin or windows")
 	}
 
 	client, err := NewClient()
@@ -461,19 +468,39 @@ func PromoteARelease(releaseName string, bucketName string, platform string) (re
 		return nil, err
 	}
 
-	release, err = client.promoteDarwinReleaseToProd(releaseName, bucketName, platformDarwin, "prod", defaultChannel)
+	platformRes, err := Platforms(platform)
 	if err != nil {
 		return nil, err
 	}
+	if len(platformRes) != 1 {
+		return nil, fmt.Errorf("Promoting on multiple platforms is not supported")
+	}
 
-	log.Printf("Promoted (darwin) release: %s\n", releaseName)
+	platformType := platformRes[0]
+	release, err = client.promoteAReleaseToProd(releaseName, bucketName, platformType, "prod", defaultChannel, dryRun)
+	if err != nil {
+		return nil, err
+	}
+	if dryRun {
+		return release, nil
+	}
+	log.Printf("Promoted %s release: %s\n", platform, releaseName)
 	return release, nil
 }
 
-func (c *Client) promoteDarwinReleaseToProd(releaseName string, bucketName string, platform Platform, env string, toChannel string) (release *Release, err error) {
-	releaseName = fmt.Sprintf("Keybase-%s.dmg", releaseName)
+func (c *Client) promoteAReleaseToProd(releaseName string, bucketName string, platform Platform, env string, toChannel string, dryRun bool) (release *Release, err error) {
+	var filePath string
+	switch platform.Name {
+	case PlatformTypeDarwin:
+		filePath = fmt.Sprintf("Keybase-%s.dmg", releaseName)
+	case PlatformTypeWindows:
+		filePath = fmt.Sprintf("Keybase_%s.amd64.msi", releaseName)
+	default:
+		return nil, fmt.Errorf("Unsupported for this platform: %s", platform.Name)
+	}
+
 	release, err = platform.FindRelease(bucketName, func(r Release) bool {
-		return r.Name == releaseName
+		return r.Name == filePath
 	})
 	if err != nil {
 		return nil, err
@@ -481,11 +508,15 @@ func (c *Client) promoteDarwinReleaseToProd(releaseName string, bucketName strin
 	if release == nil {
 		return nil, fmt.Errorf("No matching release found")
 	}
-	log.Printf("Found release %s (%s), %s", release.Name, time.Since(release.Date), release.Version)
+	log.Printf("Found %s release %s (%s), %s", platform.Name, release.Name, time.Since(release.Date), release.Version)
 	jsonName := updateJSONName(toChannel, platform.Name, env)
 	jsonURL := urlString(bucketName, platform.PrefixSupport, fmt.Sprintf("update-%s-%s-%s.json", platform.Name, env, release.Version))
-	log.Printf("PutCopying %s to %s\n", jsonURL, jsonName)
 
+	if dryRun {
+		log.Printf("DRYRUN: Would PutCopy %s to %s\n", jsonURL, jsonName)
+		return release, nil
+	}
+	log.Printf("PutCopying %s to %s\n", jsonURL, jsonName)
 	_, err = c.svc.CopyObject(&s3.CopyObjectInput{
 		Bucket:       aws.String(bucketName),
 		CopySource:   aws.String(jsonURL),
