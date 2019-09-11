@@ -472,6 +472,10 @@ func PromoteARelease(releaseName string, bucketName string, platform string, dry
 	if err != nil {
 		return nil, err
 	}
+	if len(platformRes) != 1 {
+		return nil, fmt.Errorf("Promoting on multiple platforms is not supported")
+	}
+
 	platformType := platformRes[0]
 	release, err = client.promoteAReleaseToProd(releaseName, bucketName, platformType, "prod", defaultChannel, dryRun)
 	if err != nil {

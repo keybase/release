@@ -212,18 +212,19 @@ func main() {
 		log.Printf("%s\n", date)
 		log.Printf("%s\n", commit)
 	case promoteReleasesCmd.FullCommand():
+		const dryRun bool = false
 		release, err := update.PromoteReleases(*promoteReleasesBucketName, *promoteReleasesPlatform)
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = update.CopyLatest(*promoteReleasesBucketName, *promoteReleasesPlatform, false)
+		err = update.CopyLatest(*promoteReleasesBucketName, *promoteReleasesPlatform, dryRun)
 		if err != nil {
 			log.Fatal(err)
 		}
 		if release == nil {
 			log.Print("Not notifying API server of release")
 		} else {
-			releaseTime, err := update.KBWebPromote(keybaseToken(true), release.Version, *promoteReleasesPlatform, false)
+			releaseTime, err := update.KBWebPromote(keybaseToken(true), release.Version, *promoteReleasesPlatform, dryRun)
 			if err != nil {
 				log.Fatal(err)
 			}
