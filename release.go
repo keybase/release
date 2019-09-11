@@ -91,7 +91,7 @@ var (
 	releaseToPromote          = promoteAReleaseCmd.Flag("release", "Specific release to promote to public").Required().String()
 	promoteAReleaseBucketName = promoteAReleaseCmd.Flag("bucket-name", "Bucket name to use").Required().String()
 	promoteAReleasePlatform   = promoteAReleaseCmd.Flag("platform", "Platform (darwin, linux, windows)").Required().String()
-	promoteAReleaseDryRun     = promoteAReleaseCmd.Flag("dry-run", "Announce what would be done without doing it (in-progress)").Bool()
+	promoteAReleaseDryRun     = promoteAReleaseCmd.Flag("dry-run", "Announce what would be done without doing it").Bool()
 
 	brokenReleaseCmd          = app.Command("broken-release", "Mark a release as broken")
 	brokenReleaseName         = brokenReleaseCmd.Flag("release", "Release to mark as broken").Required().String()
