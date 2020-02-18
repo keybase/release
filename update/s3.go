@@ -629,7 +629,7 @@ func copyUpdateJSON(bucketName string, fromChannel string, toChannel string, pla
 
 func (c *Client) report(tw io.Writer, bucketName string, channel string, platformName string) {
 	update, jsonPath, err := c.CurrentUpdate(bucketName, channel, platformName, "prod")
-	fmt.Fprintf(tw, fmt.Sprintf("%s\t%s\t", platformName, channel))
+	fmt.Fprintf(tw, "%s\t%s\t", platformName, channel)
 	if err != nil {
 		fmt.Fprintln(tw, "Error")
 	} else if update != nil {
