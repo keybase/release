@@ -90,7 +90,7 @@ func RandomID() (string, error) {
 		return "", err
 	}
 	str := base32.StdEncoding.EncodeToString(buf)
-	str = strings.Replace(str, "=", "", -1)
+	str = strings.ReplaceAll(str, "=", "")
 	return str, nil
 }
 
