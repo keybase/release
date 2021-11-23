@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	kbwebAPIUrl = "https://api.keybase.io"
+	kbwebAPIUrl = "https://api-0.core.keybaseapi.com"
 )
 
 const apiCa = `-----BEGIN CERTIFICATE-----
