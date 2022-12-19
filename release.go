@@ -156,11 +156,7 @@ func main() {
 			fmt.Printf("%s", version)
 		}
 	case platformCmd.FullCommand():
-		platform := runtime.GOOS
-		if platform == "darwin" && runtime.GOARCH == "arm64" {
-			platform = "darwin-arm64"
-		}
-		fmt.Printf("%s", platform)
+		fmt.Printf("%s", runtime.GOOS)
 
 	case urlCmd.FullCommand():
 		release, err := gh.ReleaseOfTag(*urlUser, *urlRepo, tag(*urlVersion), githubToken(false))
