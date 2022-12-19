@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -152,7 +151,7 @@ func WriteHTML(bucketName string, prefixes string, suffix string, outPath string
 		if err != nil {
 			return err
 		}
-		err = ioutil.WriteFile(outPath, buf.Bytes(), 0644)
+		err = os.WriteFile(outPath, buf.Bytes(), 0644)
 		if err != nil {
 			return err
 		}
