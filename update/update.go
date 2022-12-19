@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path"
@@ -108,7 +107,7 @@ func readFile(path string) (string, error) {
 		return "", err
 	}
 	defer func() { _ = sigFile.Close() }()
-	data, err := ioutil.ReadAll(sigFile)
+	data, err := io.ReadAll(sigFile)
 	if err != nil {
 		return "", err
 	}
