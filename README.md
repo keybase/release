@@ -1,6 +1,6 @@
 ## Release
 
-[![Build Status](https://app.travis-ci.com/keybase/release.svg?branch=master)](https://app.travis-ci.com/github/keybase/release)
+[![Build Status](https://github.com/keybase/release/actions/workflows/ci.yml/badge.svg)](https://github.com/keybase/release/actions)
 [![GoDoc](https://godoc.org/github.com/keybase/release?status.svg)](https://godoc.org/github.com/keybase/release)
 
 This is a command line tool for build and release scripts for generating updates, interacting with Github and S3.
