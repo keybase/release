@@ -1,6 +1,6 @@
 module github.com/keybase/release
 
-go 1.17
+go 1.19
 
 require (
 	github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc
