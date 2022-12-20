@@ -441,6 +441,7 @@ func (c *Client) copyFromReleases(platform Platform, bucketName string) (release
 // CurrentUpdate returns current update for a platform
 func (c *Client) CurrentUpdate(bucketName string, channel string, platformName string, env string) (currentUpdate *Update, path string, err error) {
 	path = updateJSONName(channel, platformName, env)
+	log.Printf("Fetching current update at %s", path)
 	resp, err := c.svc.GetObject(&s3.GetObjectInput{
 		Bucket: aws.String(bucketName),
 		Key:    aws.String(path),
@@ -544,7 +545,7 @@ func (c *Client) promoteAReleaseToProd(releaseName string, bucketName string, pl
 
 // PromoteRelease promotes a release to a channel
 func (c *Client) PromoteRelease(bucketName string, delay time.Duration, beforeHourEastern int, toChannel string, platform Platform, env string, allowDowngrade bool, releaseName string) (*Release, error) {
-	log.Printf("Finding release to promote to %q (%s delay)", toChannel, delay)
+	log.Printf("Finding release to promote to %q (%s delay) in env %s", toChannel, delay, env)
 	var release *Release
 	var err error
 
