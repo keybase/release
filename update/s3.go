@@ -247,7 +247,7 @@ const (
 )
 
 var platformDarwin = Platform{Name: PlatformTypeDarwin, Prefix: "darwin/", PrefixSupport: "darwin-support/", LatestName: "Keybase.dmg"}
-var platformDarwinArm64 = Platform{Name: "darwin-arm64", Prefix: "darwin-arm64/", PrefixSupport: "darwin-arm64-support/", LatestName: "Keybase-arm64.dmg"}
+var platformDarwinArm64 = Platform{Name: PlatformTypeDarwinArm64, Prefix: "darwin-arm64/", PrefixSupport: "darwin-arm64-support/", LatestName: "Keybase-arm64.dmg"}
 var platformLinuxDeb = Platform{Name: "deb", Prefix: "linux_binaries/deb/", Suffix: "_amd64.deb", LatestName: "keybase_amd64.deb"}
 var platformLinuxRPM = Platform{Name: "rpm", Prefix: "linux_binaries/rpm/", Suffix: ".x86_64.rpm", LatestName: "keybase_amd64.rpm"}
 var platformWindows = Platform{Name: PlatformTypeWindows, Prefix: "windows/", PrefixSupport: "windows-support/", LatestName: "keybase_setup_amd64.msi"}
